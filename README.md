@@ -9,7 +9,7 @@
 | Dennis Han     | jf23616    |      |
 | Zakiya Yousuf  | hg23195    |      |
 | Gerard Chaba   | tl23383    |      |
-| Ammera Nur     | ct23065    |      |  
+| Ameera Nur     | ct23065    |      |  
 
 ## Project Description
 Our project is a motion-based interactive device that combines physical tea and coffee-making tools (such as a sieve, matcha whisk, and kettle) embedded with magnets and sensors to track player movements, which are then translated into a calming, <i>Cooking Mama</i> or <i>Just Dance</i> style video game. Players follow on-screen tutorials and progress through three levels of increasing difficulty, replicating sequences of motions to accurately fill a virtual cup, with a final creative level allowing them to record and repeat their own sequence. Designed to be both satisfying and therapeutic, the game aims to assist individuals in regaining specific motor skills while offering a relaxing, <i>A Little to the Left</i> style experience for casual home enjoyment.
