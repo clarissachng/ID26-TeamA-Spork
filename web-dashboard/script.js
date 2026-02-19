@@ -203,7 +203,7 @@ function saveIndividualRecording() {
     let name = window.prompt("Name this recording:", "motion_capture_uT");
     if (!name) return;
 
-    let csv = "timestamp,x_uT,y_uT,z_uT\n" + recordedData.map(r => `${r.t},${r.x},${r.y},${r.z}`).join("\n"); // 
+    let csv = "timestamp,x_uT,y_uT,z_uT\n" + recordedData.map(r => `${r.t},${r.x},${r.y},${r.z}`).join("\n");
     const blob = new Blob([csv], { type: 'text/csv' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
