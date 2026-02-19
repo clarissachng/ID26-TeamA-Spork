@@ -2,19 +2,46 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Magnetometer Pro</title>
+    <title>Magnetometer Pro - Motion Analysis</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <h1>Magnetometer Data</h1>
+        <h1>Motion Dashboard</h1>
+        
         <div class="controls">
-            <button id="btnConnect">🔌 Connect Arduino</button>
-            <button id="btnRecord" disabled>🔴 Record Data</button>
-            <button id="btnDownload" disabled>💾 Download CSV</button>
-        </div>
+    <button id="btnConnect">🔌 Connect Arduino</button>
+    <button id="btnRecord" disabled>Start Recording</button>
+    <button id="btnNewSession">New Session</button>
+    
+    <button id="btnTare">Zero Sensor</button>
+    
+    <div class="slider-group">
+        <label>Sensitivity</label>
+        <input type="range" id="rangeScale" min="0.5" max="10.0" step="0.1" value="2.5">
+        <span id="scaleDisplay">2.5x</span>
+    </div>
+</div>
+
         <canvas id="magChart"></canvas>
+
+        <div class="visualiser-area">
+            <div class="circle-container">
+                <div class="axis-label">Y-Axis</div>
+                <div class="compass-circle">
+                    <div id="magnetPointer1" class="pointer blue-dot"></div>
+                    <div id="magnetPointer2" class="pointer red-dot" style="display:none;"></div>
+                    <div class="center-dot"></div>
+                </div>
+                <div class="axis-label">X-Axis</div>
+            </div>
+            <div class="motion-stats">
+                <h3>System Status</h3>
+                <div id="magnetCount" class="stat-small">Waiting for data...</div>
+                <div id="headingVal" class="stat-big">0°</div>
+            </div>
+        </div>
     </div>
     <script src="script.js"></script>
 </body>
