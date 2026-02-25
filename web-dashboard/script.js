@@ -3,7 +3,7 @@ let recordedData = [];
 let isRecording = false;
 
 // 1. Smoothing & Offset Variables
-const alpha = 0.4; // [cite: 5]
+const alpha = 0.4;
 let sX = 0, sY = 0, sZ = 0;
 let sX2 = 0, sY2 = 0;
 let offsetX = 0, offsetY = 0, offsetZ = 0; 
@@ -62,7 +62,7 @@ if(rangeInput) {
     });
 }
 
-// 5. Zero / Tare Button Logic [cite: 17]
+// 5. Zero / Tare Button Logic
 const btnTare = document.getElementById('btnTare');
 if(btnTare) {
     btnTare.addEventListener('click', () => {
@@ -73,7 +73,7 @@ if(btnTare) {
     });
 }
 
-// 6. Serial Connection [cite: 10]
+// 6. Serial Connection
 async function connect() {
     try {
         port = await navigator.serial.requestPort();
@@ -116,7 +116,7 @@ async function readLoop() {
 }
 
 function updateUI(data) {
-    // Apply Smoothing [cite: 5]
+    // Apply Smoothing
     sX = (alpha * data.x) + ((1 - alpha) * sX);
     sY = (alpha * data.y) + ((1 - alpha) * sY);
     sZ = (alpha * data.z) + ((1 - alpha) * sZ);
@@ -125,7 +125,7 @@ function updateUI(data) {
     const finalY = sY - offsetY;
     const finalZ = sZ - offsetZ;
 
-    // Update Graph [cite: 24]
+    // Update Graph
     chart.data.datasets[0].data.push(finalX);
     chart.data.datasets[1].data.push(finalY);
     chart.data.datasets[2].data.push(finalZ);
@@ -134,7 +134,7 @@ function updateUI(data) {
     }
     chart.update();
 
-    // Visualiser Clamping Logic [cite: 22, 23]
+    // Visualiser Clamping Logic
     const p1 = document.getElementById('magnetPointer1');
     const p2 = document.getElementById('magnetPointer2');
     const maxRadius = 100;
@@ -167,7 +167,7 @@ function updateUI(data) {
         p2.style.display = "none";
     }
 
-    let angle = Math.atan2(finalY, finalX) * (180 / Math.PI); // [cite: 22]
+    let angle = Math.atan2(finalY, finalX) * (180 / Math.PI);
     document.getElementById('headingVal').innerText = Math.round(angle < 0 ? angle + 360 : angle) + "°";
 }
 
