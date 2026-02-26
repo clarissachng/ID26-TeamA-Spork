@@ -1,0 +1,93 @@
+body {
+    background: #121212;
+    color: white;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+}
+.container { width: 90%; max-width: 800px; }
+.controls { margin-bottom: 20px; display: flex; gap: 10px; }
+
+button {
+    padding: 10px 20px;
+    cursor: pointer;
+    border-radius: 5px;
+    border: none;
+    font-weight: bold;
+    transition: 0.3s;
+}
+button:disabled { opacity: 0.3; cursor: not-allowed; }
+#btnConnect { background: #4CAF50; color: white; }
+#btnRecord.recording { background: #f44336; animation: blink 1s infinite; }
+
+canvas { background: #1e1e1e; border-radius: 8px; margin-bottom: 20px; }
+
+@keyframes blink { 50% { opacity: 0.5; } }
+
+/* Visualiser Logic */
+.visualiser-area {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 30px;
+    background: #1e1e1e;
+    border-radius: 8px;
+}
+.compass-circle {
+    width: 220px;
+    height: 220px;
+    border: 3px solid #333;
+    border-radius: 50%;
+    position: relative;
+    background: radial-gradient(circle, #252525 0%, #121212 100%);
+    /* Prevents any rendering outside the circle */
+    overflow: hidden; 
+}
+.center-dot {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 4px; height: 4px;
+    background: #555;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+}
+.pointer {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: transform 0.05s ease-out;
+    z-index: 10;
+}
+
+.slider-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #1e1e1e;
+    padding: 5px 15px;
+    border-radius: 5px;
+    font-size: 0.8rem;
+    color: #888;
+}
+
+input[type=range] {
+    cursor: pointer;
+    accent-color: #4CAF50;
+}
+
+#scaleDisplay {
+    min-width: 35px;
+    color: #4CAF50;
+    font-weight: bold;
+}
+
+/* Color States */
+.blue-dot { background: #36a2eb; box-shadow: 0 0 15px #36a2eb; }
+.red-dot { background: #ff6384; box-shadow: 0 0 15px #ff6384; }
+
+.axis-label { text-align: center; font-size: 0.75rem; color: #666; margin: 8px; }
+.stat-big { font-size: 2.8rem; color: #4CAF50; font-weight: bold; }
+.stat-small { font-size: 0.9rem; color: #888; }

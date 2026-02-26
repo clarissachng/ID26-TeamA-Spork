@@ -94,3 +94,14 @@ InitTestScene*.unity*
 
 # Auto-generated scenes by play mode tests
 /[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
+# Dependencies
+node_modules/
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
+Thumbs.db
