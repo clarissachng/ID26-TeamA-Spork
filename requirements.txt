@@ -2,3 +2,5 @@ pandas
 numpy
 matplotlib
 scipy
+pyserial
+websockets

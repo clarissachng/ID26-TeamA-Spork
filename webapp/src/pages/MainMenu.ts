@@ -33,13 +33,18 @@ export function createMainMenu(): HTMLElement {
   page.className = 'page menu-bg';
 
   page.innerHTML = `
-    <!-- ── BGM Picker (top-right) ── -->
-    <div class="bgm-picker" id="bgm-picker">
-      <button class="bgm-picker__toggle" id="bgm-toggle" aria-label="Background music">
-        <span class="bgm-picker__note">♪</span>
-        <span class="bgm-picker__label">Music</span>
+    <!-- ── Top-right controls: Theme toggle + BGM Picker ── -->
+    <div class="top-right-controls">
+      <button class="theme-toggle" id="theme-toggle" aria-label="Toggle light/dark theme">
+        <span class="theme-toggle__icon" id="theme-icon">☀️</span>
+        <span id="theme-label">Light</span>
       </button>
-      <div class="bgm-picker__panel hidden" id="bgm-panel">
+      <div class="bgm-picker" id="bgm-picker">
+        <button class="bgm-picker__toggle" id="bgm-toggle" aria-label="Background music">
+          <span class="bgm-picker__note">♪</span>
+          <span class="bgm-picker__label">Music</span>
+        </button>
+        <div class="bgm-picker__panel hidden" id="bgm-panel">
         <div class="bgm-picker__panel-title">Background Music</div>
         <ul class="bgm-picker__track-list" id="bgm-track-list"></ul>
         <div class="bgm-picker__volume-row">
@@ -49,6 +54,7 @@ export function createMainMenu(): HTMLElement {
           <span class="bgm-picker__vol-icon">🔊</span>
         </div>
       </div>
+    </div>
     </div>
 
     <!-- ── Split layout: illustration left, menu right ── -->
@@ -70,7 +76,7 @@ export function createMainMenu(): HTMLElement {
         <div class="menu-logo-placeholder" aria-label="Spork logo">
           <span style="font-size: 4.5rem; display: block; margin-bottom: var(--space-sm);">☕</span>
           <h1>Spork</h1>
-          <p class="subtitle">the motion brewing game</p>
+          <p class="subtitle">a motion brewing game for everyone</p>
         </div>
 
         <nav class="stack stagger-children" role="navigation" aria-label="Main Menu">
@@ -234,6 +240,38 @@ export function createMainMenu(): HTMLElement {
 
   document.addEventListener('ws-status', updateStatus);
   updateStatus();
+
+  // ═══════════════════════════════════════════════════════
+  //  Theme Toggle
+  // ═══════════════════════════════════════════════════════
+  const themeToggleBtn = page.querySelector('#theme-toggle') as HTMLButtonElement;
+  const themeIcon = page.querySelector('#theme-icon') as HTMLElement;
+  const themeLabel = page.querySelector('#theme-label') as HTMLElement;
+
+  function getCurrentTheme(): string {
+    return document.documentElement.getAttribute('data-theme') || 'dark';
+  }
+
+  function updateThemeButton(): void {
+    const theme = getCurrentTheme();
+    if (theme === 'light') {
+      themeIcon.textContent = '\u{1F319}';
+      themeLabel.textContent = 'Dark';
+    } else {
+      themeIcon.textContent = '\u{2600}\u{FE0F}';
+      themeLabel.textContent = 'Light';
+    }
+  }
+
+  themeToggleBtn.addEventListener('click', () => {
+    const current = getCurrentTheme();
+    const next = current === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('spork-theme', next);
+    updateThemeButton();
+  });
+
+  updateThemeButton();
 
   return page;
 }
