@@ -59,8 +59,8 @@
   --glow-warm:      0 0 20px rgba(212, 165, 116, 0.25);
 
   /* Typography */
-  --font-display:   'Playfair Display', 'Georgia', serif;
-  --font-body:      'Nunito', 'Segoe UI', system-ui, sans-serif;
+  --font-display:   'galaxy', serif;  /* italic for headers & buttons */
+  --font-body:      'Buckwheat', sans-serif;  /* normal for body text */
   --font-mono:      'JetBrains Mono', 'Fira Code', monospace;
   --font-handwritten: 'galaxy', sans-serif;
 
@@ -883,6 +883,7 @@ p {
 }
 
 /* ── Named background classes (for asset swap) ─────────── */
+/* ── Named background classes (for asset swap) ──────────── */
 .menu-bg {
   /* background-image: url('/assets/menu-bg.jpg'); */
   background-size: cover;
@@ -899,6 +900,14 @@ p {
 
 .choreograph-bg {
   /* background-image: url('/assets/choreograph-bg.jpg'); */
+}
+
+/* ── Play Page — game rounds with kitchen background ── */
+#play {
+  background-image: url('/assets/bg.PNG');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
 }
 
 /* ── Keyframes ─────────────────────────────────────────── */
