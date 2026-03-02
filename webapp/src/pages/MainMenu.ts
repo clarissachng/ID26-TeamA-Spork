@@ -73,9 +73,15 @@ export function createMainMenu(): HTMLElement {
 
       <!-- Right: title + nav buttons -->
       <div class="menu-split__right">
-        <div class="menu-logo-placeholder" aria-label="Spork logo">
-          <span style="font-size: 4.5rem; display: block; margin-bottom: var(--space-sm);">☕</span>
-          <h1>Spork</h1>
+        <div class="menu-logo-placeholder" aria-label="While It Steeps logo">
+          <img
+            src="/assets/logo.png"
+            alt="While It Steeps - motion brewing game logo"
+            class="menu-logo-img"
+            width="120"
+            height="120"
+          />
+          <h1>While It Steeps</h1>
           <p class="subtitle">a motion brewing game for everyone</p>
         </div>
 

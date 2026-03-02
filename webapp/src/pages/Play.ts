@@ -21,12 +21,13 @@ export function createPlayPage(): HTMLElement {
       <span class="btn-icon btn-back-icon"></span>
       Back
     </button>
-    <div class="stack stack--lg" style="text-align: center; width: 100%; max-width: 480px;">
+    <div class="play-round">
       <h2 id="play-title"></h2>
-      <div id="play-progress" class="row" style="justify-content: center; flex-wrap: wrap; gap: var(--space-xs);"></div>
-      <div id="play-prompt-area"></div>
-      <div id="play-cup-area" style="display: flex; justify-content: center;"></div>
-      <div id="play-result" class="hidden stack" style="text-align: center;"></div>
+      <div id="play-progress" class="play-progress-dots"></div>
+      <div id="play-stamps" class="play-stamps"></div>
+      <div id="play-prompt-area" class="sr-only"></div>
+      <div id="play-cup-area" class="play-cup-wrap"></div>
+      <div id="play-result" class="hidden stack play-result-overlay" style="text-align: center;"></div>
     </div>
   `;
 
@@ -49,8 +50,12 @@ function startLevel(page: HTMLElement): void {
   const levelId = parseInt(page.dataset.levelId ?? '1', 10);
   const level: GameLevel = LEVELS.find(l => l.id === levelId) ?? LEVELS[0];
 
+  const VISUAL_STAMP_COUNT = level.steps.length;
+  const stampVisualClasses = Array.from({ length: VISUAL_STAMP_COUNT }, (_, i) => `stamp-${i + 1}`);
+
   const titleEl = page.querySelector('#play-title') as HTMLElement;
   const progressEl = page.querySelector('#play-progress') as HTMLElement;
+  const stampsEl = page.querySelector('#play-stamps') as HTMLElement;
   const promptArea = page.querySelector('#play-prompt-area') as HTMLElement;
   const cupArea = page.querySelector('#play-cup-area') as HTMLElement;
   const resultArea = page.querySelector('#play-result') as HTMLElement;
@@ -58,31 +63,65 @@ function startLevel(page: HTMLElement): void {
   // Reset
   titleEl.textContent = level.name;
   progressEl.innerHTML = '';
+  stampsEl.innerHTML = '';
   promptArea.innerHTML = '';
   cupArea.innerHTML = '';
   resultArea.innerHTML = '';
   resultArea.classList.add('hidden');
 
   // Build progress dots
-  const dots: HTMLElement[] = level.steps.map((_, i) => {
+  const dots: HTMLElement[] = Array.from({ length: VISUAL_STAMP_COUNT }, (_, i) => {
     const dot = document.createElement('span');
-    dot.className = 'progress-dot';
-    dot.style.cssText = `
-      width: 14px; height: 14px; border-radius: 50%;
-      background: var(--bg-card);
-      transition: background var(--duration-mid), transform var(--duration-fast) var(--ease-spring);
-    `;
+    dot.className = 'play-progress-dot';
     dot.title = `Step ${i + 1}`;
     progressEl.appendChild(dot);
     return dot;
+  });
+
+  const stamps: HTMLElement[] = Array.from({ length: VISUAL_STAMP_COUNT }, (_, i) => {
+    const stamp = document.createElement('div');
+    stamp.className = `play-stamp ${stampVisualClasses[i]}`;
+    stamp.title = `Stamp ${i + 1}`;
+    stamp.innerHTML = `<div class="play-stamp__inner"></div>`;
+    stampsEl.appendChild(stamp);
+    return stamp;
   });
 
   const cup = new CupFill(cupArea);
   const prompt = new MotionPrompt(promptArea);
 
   let currentStep = 0;
+  let completedCorrect = 0;
   let score = 0;
   let motionHandler: ((e: Event) => void) | null = null;
+
+  function updateVisualProgress(): void {
+    dots.forEach((dot, i) => {
+      dot.classList.toggle('is-complete', i < completedCorrect);
+    });
+
+    stamps.forEach((stamp, i) => {
+      stamp.classList.toggle('is-active', i < completedCorrect);
+    });
+
+    cup.setFill(Math.min(completedCorrect, VISUAL_STAMP_COUNT) / VISUAL_STAMP_COUNT);
+  }
+
+  function flashWrongStamp(): void {
+    const targetIndex = Math.min(completedCorrect, VISUAL_STAMP_COUNT - 1);
+    const stamp = stamps[targetIndex];
+    if (!stamp) return;
+
+    stamp.classList.remove('is-wrong');
+    void stamp.offsetWidth;
+    stamp.classList.add('is-wrong');
+
+    setTimeout(() => {
+      stamp.classList.remove('is-wrong');
+    }, 320);
+  }
+
+  updateVisualProgress();
 
   function advance(): void {
     if (currentStep >= level.steps.length) {
@@ -91,15 +130,16 @@ function startLevel(page: HTMLElement): void {
     }
 
     const step = level.steps[currentStep];
-    dots[currentStep].style.background = 'var(--accent-gold)';
-    dots[currentStep].style.transform = 'scale(1.3)';
 
     prompt.show(step.motion);
     prompt.startTimer(step.duration, () => {
       // Timer expired — fail this step
       prompt.markFail();
-      dots[currentStep].style.background = 'var(--accent-rose)';
-      dots[currentStep].style.transform = 'scale(1)';
+      flashWrongStamp();
+      if (motionHandler) {
+        document.removeEventListener('motion-detected', motionHandler);
+        motionHandler = null;
+      }
       currentStep++;
       setTimeout(advance, 800);
     });
@@ -107,18 +147,29 @@ function startLevel(page: HTMLElement): void {
     // Listen for matching motion
     motionHandler = ((e: Event) => {
       const detail = (e as CustomEvent).detail as { motion: MotionType; confidence: number };
+
       if (detail.motion === step.motion) {
         prompt.stopTimer();
         prompt.markSuccess();
         score += detail.confidence;
-        cup.setFill(score / level.steps.length);
+        if (completedCorrect < VISUAL_STAMP_COUNT) {
+          const activatedStamp = stamps[completedCorrect];
+          activatedStamp.classList.remove('pop');
+          void activatedStamp.offsetWidth;
+          activatedStamp.classList.add('pop');
+          setTimeout(() => activatedStamp.classList.remove('pop'), 320);
+        }
+
+        completedCorrect++;
+        updateVisualProgress();
         cup.splash();
-        dots[currentStep].style.background = 'var(--accent-sage)';
-        dots[currentStep].style.transform = 'scale(1)';
+
         document.removeEventListener('motion-detected', motionHandler!);
         motionHandler = null;
         currentStep++;
         setTimeout(advance, 800);
+      } else {
+        flashWrongStamp();
       }
     });
     document.addEventListener('motion-detected', motionHandler);
