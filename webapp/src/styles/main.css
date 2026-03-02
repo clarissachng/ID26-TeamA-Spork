@@ -45,6 +45,7 @@
   --font-display:   'Playfair Display', 'Georgia', serif;
   --font-body:      'Nunito', 'Segoe UI', system-ui, sans-serif;
   --font-mono:      'JetBrains Mono', 'Fira Code', monospace;
+  --font-handwritten: 'Courgette', cursive;
 
   /* Spacing scale */
   --space-xs: 0.25rem;
@@ -168,12 +169,12 @@ p {
   padding: var(--space-md) var(--space-xl);
   border: none;
   border-radius: var(--radius-md);
-  font-family: var(--font-display);
+  font-family: var(--font-handwritten);
   font-size: 1.15rem;
   font-weight: 600;
   cursor: pointer;
   color: var(--bg-deep);
-  background: var(--accent-warm);
+  /* background: var(--accent-warm); */
   box-shadow: var(--shadow-soft), inset 0 1px 0 rgba(255,255,255,0.15);
   transition:
     transform var(--duration-fast) var(--ease-spring),
@@ -205,9 +206,9 @@ p {
 }
 
 /* Button variants */
-.btn--primary   { background: var(--accent-warm);  color: var(--bg-deep); }
-.btn--sage      { background: var(--accent-sage);  color: var(--bg-deep); }
-.btn--rose      { background: var(--accent-rose);  color: var(--bg-deep); }
+.btn--primary   { color: var(--accent-warm); }
+.btn--sage      { color: var(--accent-sage); }
+.btn--rose      { color: var(--accent-rose); }
 .btn--sky       { background: var(--accent-sky);   color: var(--bg-deep); }
 .btn--gold      { background: var(--accent-gold);  color: var(--bg-deep); }
 .btn--ghost {
@@ -445,6 +446,348 @@ p {
 .connection-dot.connected {
   background: var(--accent-sage);
   box-shadow: 0 0 8px var(--accent-sage);
+}
+
+/* ── BGM Picker (top-right floating) ───────────────────── */
+.bgm-picker {
+  position: absolute;
+  top: var(--space-lg);
+  right: var(--space-lg);
+  z-index: 20;
+}
+
+.bgm-picker__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow-soft);
+  transition:
+    background var(--duration-mid) var(--ease-out-soft),
+    transform var(--duration-fast) var(--ease-spring),
+    color var(--duration-mid);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bgm-picker__toggle:hover {
+  background: var(--bg-card-hover);
+  color: var(--accent-cream);
+  transform: translateY(-1px);
+}
+
+.bgm-picker__toggle:active {
+  transform: translateY(1px) scale(0.97);
+}
+
+.bgm-picker__note {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.bgm-picker__panel {
+  position: absolute;
+  top: calc(100% + var(--space-sm));
+  right: 0;
+  width: 240px;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  box-shadow: var(--shadow-lifted);
+  animation: bgm-panel-enter var(--duration-mid) var(--ease-spring) both;
+  z-index: 25;
+}
+
+.bgm-picker__panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1.5px solid rgba(245, 230, 208, 0.06);
+  pointer-events: none;
+}
+
+.bgm-picker__panel.hidden {
+  display: none;
+}
+
+.bgm-picker__panel-title {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--accent-cream);
+  margin-bottom: var(--space-sm);
+  text-align: center;
+}
+
+.bgm-picker__track-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-md);
+}
+
+.bgm-picker__track {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition:
+    background var(--duration-fast),
+    transform var(--duration-fast) var(--ease-spring);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bgm-picker__track:hover {
+  background: var(--bg-card-hover);
+  transform: translateX(2px);
+}
+
+.bgm-picker__track:active {
+  transform: scale(0.98);
+}
+
+.bgm-picker__track.active {
+  background: rgba(143, 170, 123, 0.15);
+}
+
+.bgm-picker__track.active .bgm-picker__track-name {
+  color: var(--accent-sage);
+}
+
+.bgm-picker__track-icon {
+  font-size: 1rem;
+  width: 22px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.bgm-picker__track-name {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  transition: color var(--duration-mid);
+}
+
+.bgm-picker__volume-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding-top: var(--space-sm);
+  border-top: 1px solid rgba(245, 230, 208, 0.06);
+}
+
+.bgm-picker__vol-icon {
+  font-size: 0.85rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.bgm-picker__volume {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-surface);
+  outline: none;
+  cursor: pointer;
+}
+
+.bgm-picker__volume::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent-warm);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-spring);
+}
+
+.bgm-picker__volume::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.bgm-picker__volume::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent-warm);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  cursor: pointer;
+}
+
+@keyframes bgm-panel-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ── Arduino Connection Button (bottom-left) ───────────── */
+.arduino-status-btn {
+  position: absolute;
+  bottom: var(--space-lg);
+  left: var(--space-lg);
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--bg-card);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  box-shadow: var(--shadow-soft);
+  transition:
+    background var(--duration-mid) var(--ease-out-soft),
+    transform var(--duration-fast) var(--ease-spring),
+    color var(--duration-mid);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.arduino-status-btn:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-secondary);
+  transform: translateY(-1px);
+}
+
+.arduino-status-btn:active {
+  transform: translateY(1px) scale(0.97);
+}
+
+.arduino-status-btn__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition:
+    background var(--duration-mid),
+    box-shadow var(--duration-mid);
+}
+
+.arduino-status-btn__dot.dot--connecting {
+  background: var(--accent-gold);
+  box-shadow: 0 0 6px var(--accent-gold);
+  animation: dot-pulse 1.5s ease-in-out infinite;
+}
+
+.arduino-status-btn__dot.dot--connected {
+  background: var(--accent-sage);
+  box-shadow: 0 0 8px var(--accent-sage);
+}
+
+.arduino-status-btn__dot.dot--disconnected {
+  background: var(--accent-rose);
+  box-shadow: none;
+}
+
+.arduino-status-btn__label {
+  line-height: 1;
+}
+
+@keyframes dot-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+
+/* ── Menu Split Layout ("A Little to the Left" style) ──── */
+.menu-split {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  z-index: 2;
+}
+
+.menu-split__left {
+  flex: 0 0 55%;                   /* ← illustration takes 55% width  */
+  display: flex;
+  align-items: flex-end;           /* anchor illustration to bottom    */
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.menu-split__right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;         /* left-align text & buttons        */
+  justify-content: center;
+  gap: var(--space-xl);
+  padding: var(--space-2xl) var(--space-xl);
+}
+
+/* ── Menu Illustration (left-side props GIF) ───────────── */
+.menu-illustration {
+  width: 100%;
+  max-width: 750px;                /* ← max width of the illustration */
+  pointer-events: none;
+  /* Spacing knobs: */
+  padding: 0;
+  margin-bottom: -20px;            /* overlap bottom edge slightly     */
+}
+
+.menu-illustration__img {
+  display: block;
+  width: 100%;                     /* scales to container width        */
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 -4px 20px rgba(0,0,0,0.4));
+  transition: opacity var(--duration-mid) var(--ease-out-soft);
+}
+
+/* ── Right-side menu content alignment ─────────────────── */
+.menu-split__right .menu-logo-placeholder {
+  text-align: left;
+}
+
+.menu-split__right .stack {
+  align-items: flex-start;         /* buttons align left               */
+}
+
+/* ── Responsive: stack vertically on narrow screens ────── */
+@media (max-width: 768px) {
+  .menu-split {
+    flex-direction: column;
+  }
+  .menu-split__left {
+    flex: 0 0 auto;
+    max-height: 45vh;
+  }
+  .menu-split__right {
+    align-items: center;
+    text-align: center;
+    padding: var(--space-lg);
+  }
+  .menu-split__right .menu-logo-placeholder {
+    text-align: center;
+  }
+  .menu-split__right .stack {
+    align-items: center;
+  }
 }
 
 /* ── Named background classes (for asset swap) ─────────── */
