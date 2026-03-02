@@ -248,6 +248,13 @@ async def serial_reader(port: str, raw_mode: bool = False, baud_rate: int = BAUD
             # Detection mode
             events = detector.add_sample(x, y, z)
 
+            # Print magnitude periodically so you can see the sensor is alive
+            if sample_count % 25 == 0:
+                print(
+                    f"  📊 #{sample_count:>5}  |mag|={mag:>7.1f} µT  "
+                    f"(x={x:>7.1f} y={y:>7.1f} z={z:>7.1f})"
+                )
+
             for event in events:
                 print(
                     f"  🎯 Detected: {event['motion']:>12}  "
