@@ -74,7 +74,8 @@ export type MotionType =
   | 'circle'
   | 'left_right'
   | 'up_down'
-  | 'w_motion';
+  | 'w_motion'
+  | 'pour';
 
 export const ALL_MOTIONS: MotionType[] = [
   'coffee_grinder', 'pour', 'press_down', 'scoop', 'sieve',

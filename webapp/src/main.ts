@@ -15,6 +15,10 @@ import { createChoreograph } from './pages/Choreograph.ts';
 import { motionDetector } from './components/MotionDetector.ts';
 
 function init(): void {
+  // Apply saved theme (default: dark)
+  const savedTheme = localStorage.getItem('spork-theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', savedTheme);
+
   console.log('☕ Spork — Initializing…');
 
   const app = document.getElementById('app')!;

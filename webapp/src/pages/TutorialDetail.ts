@@ -1,9 +1,12 @@
 /**
  * TutorialDetail page — shows what motion to perform for a specific prop,
  * with a visual demonstration area and real-time sensor feedback.
+ *
+ * Special case: "circle" motion uses the GrinderTutorial component.
  */
 import { router } from './router.ts';
 import { MOTION_META, type MotionType } from '../types/motion.types.ts';
+import { GrinderTutorial } from '../components/GrinderTutorial.ts';
 
 export function createTutorialDetail(): HTMLElement {
   const page = document.createElement('div');
@@ -21,7 +24,10 @@ export function createTutorialDetail(): HTMLElement {
       <p id="td-label" class="subtitle"></p>
       <p id="td-desc"></p>
 
-      <!-- Visual demonstration placeholder — swap for animation/video later -->
+      <!-- Special grinder demo for circle motion — will be populated by setupDetail -->
+      <div id="td-grinder-container"></div>
+
+      <!-- Visual demonstration placeholder for other motions -->
       <div id="td-demo" class="tutorial-demo-area" style="
         width: 100%;
         height: 180px;
@@ -71,19 +77,37 @@ export function createTutorialDetail(): HTMLElement {
 
   /* ── Update content when page becomes active ── */
   let motionHandler: ((e: Event) => void) | null = null;
+  let grinder: GrinderTutorial | null = null;
 
   const observer = new MutationObserver(() => {
     if (page.classList.contains('active')) {
       const motion = (page.dataset.motion ?? 'stir') as MotionType;
       setupDetail(page, motion);
-      // Start listening for motion events
-      motionHandler = createMotionListener(page, motion);
-      document.addEventListener('motion-detected', motionHandler);
+
+      if (motion === 'circle') {
+        // Use grinder component for circle motion
+        const grinderContainer = page.querySelector('#td-grinder-container') as HTMLElement;
+        grinder = new GrinderTutorial(grinderContainer);
+        grinder.start();
+        // Hide generic demo and feedback
+        (page.querySelector('#td-demo') as HTMLElement).style.display = 'none';
+        (page.querySelector('#td-feedback') as HTMLElement).style.display = 'none';
+      } else {
+        // Use generic demo for other motions
+        (page.querySelector('#td-demo') as HTMLElement).style.display = 'flex';
+        (page.querySelector('#td-feedback') as HTMLElement).style.display = 'flex';
+        motionHandler = createMotionListener(page, motion);
+        document.addEventListener('motion-detected', motionHandler);
+      }
     } else {
       // Clean up listener when leaving
       if (motionHandler) {
         document.removeEventListener('motion-detected', motionHandler);
         motionHandler = null;
+      }
+      if (grinder) {
+        grinder.destroy();
+        grinder = null;
       }
     }
   });
