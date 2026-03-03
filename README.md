@@ -5,11 +5,11 @@
 ## Team Member
 | Name           | Student ID | Role |
 |----------------|------------|------|
-| Clarissa Ch'ng | fr22378    |      |
-| Dennis Han     | jf23616    |      |
-| Zakiya Yousuf  | hg23195    |      |
-| Gerard Chaba   | tl23383    |      |
-| Ameera Nur     | ct23065    |      |  
+| Clarissa Ch'ng | fr22378    |  Software (Frontend), Designer (Software), Project Manager    |
+| Dennis Han     | jf23616    |  Hardware Printing, Research, Writing    |
+| Zakiya Yousuf  | hg23195    |  Research Lead, Writing, User Understanding    |
+| Gerard Chaba   | tl23383    |  Software (Linking Game to Frontend), Research, Writing    |
+| Ameera Nur     | ct23065    |  Software (Backend), Hardware (Wiring), Project Manager    |  
 
 ## Project Description
 Our project is a motion-based interactive device that combines physical tea and coffee-making tools (such as a sieve, matcha whisk, and kettle) embedded with magnets and sensors to track player movements, which are then translated into a calming, <i>Cooking Mama</i> or <i>Just Dance</i> style video game. Players follow on-screen tutorials and progress through three levels of increasing difficulty, replicating sequences of motions to accurately fill a virtual cup, with a final creative level allowing them to record and repeat their own sequence. Designed to be both satisfying and therapeutic, the game aims to assist individuals in regaining specific motor skills while offering a relaxing, <i>A Little to the Left</i> style experience for casual home enjoyment.
@@ -32,3 +32,6 @@ Our project is a motion-based interactive device that combines physical tea and 
 <a target="_blank" href="https://docs.google.com/spreadsheets/d/1WJlrQEFoqLSk08SffmYSsfnndG825bTncRuUyI96l8E/edit?gid=0#gid=0">Main Interactive Devices Hub Link (Google Sheet)</a>
 
 <img width="auto" height="400" src="/assets/sticky-notes.png">
+
+first iteration for software 
+<img width="auto" height="400" src="/assets/first_iteration.gif">
