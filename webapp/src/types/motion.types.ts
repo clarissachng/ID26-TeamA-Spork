@@ -61,38 +61,34 @@ export interface MotionProfilesData {
 /* ── Game Motion Types ─────────────────────────────────── */
 
 export type MotionType =
-  | 'coffee_grinder'
   | 'pour'
   | 'press_down'
   | 'scoop'
-  | 'sieve'
   | 'squeeze'
   | 'stir'
-  | 'tea_bag'
   | 'whisk'
   // Legacy motions (single recording)
-  | 'circle'
+  | 'grinding'
   | 'left_right'
-  | 'up_down'
-  | 'w_motion'
-  | 'pour';
+  | 'up_down';
 
 export const ALL_MOTIONS: MotionType[] = [
-  'coffee_grinder', 'pour', 'press_down', 'scoop', 'sieve',
-  'squeeze', 'stir', 'tea_bag', 'whisk',
-  'circle', 'left_right', 'up_down', 'w_motion',
+  'pour', 'press_down', 'scoop',
+  'squeeze', 'stir','whisk',
+  'grinding', 'left_right', 'up_down',
 ];
 
 /** Human-friendly labels for each motion */
-export const MOTION_META: Record<MotionType, { label: string; emoji: string; description: string; prop: string }> = {
-  circle:     { label: 'Circle',     emoji: '🔄', description: 'Move in a circular motion to grind the coffee beans',     prop: 'Coffee Grinder' },
-  left_right: { label: 'Left-Right', emoji: '↔️',  description: 'Sway the tool side to side',             prop: 'Sieve' },
-  press_down: { label: 'Press Down', emoji: '⬇️',  description: 'Press the tool firmly downward',         prop: 'French Press' },
-  scoop:      { label: 'Scoop',      emoji: '🥄', description: 'Scoop upward in a smooth arc',           prop: 'Spoon' },
-  squeeze:    { label: 'Squeeze',    emoji: '🧊', description: 'Squeeze to get some ice cubes',                prop: 'Tongs' },
-  up_down:    { label: 'Up-Down',    emoji: '🍵',  description: 'Dip the tool up and down rhythmically',  prop: 'Teabag' },
-  pour:   { label: 'Pour',   emoji: '🫖', description: 'Pour to get some water/milk to your drink',          prop: 'Pour' },
-  w_motion:   { label: 'W-Motion',   emoji: '🧋', description: 'Whisk to get a smooth texture',          prop: 'Whisk' },
+export const MOTION_META: Record<MotionType, { label: string; asset: string; description: string; prop: string }> = {
+  pour:           { label: 'Pour',           asset: '🫖', description: 'Pour to get some water/milk to your drink',          prop: 'Pour' },
+  press_down:     { label: 'Press Down',     asset: '⬇️',  description: 'Press the tool firmly downward',                    prop: 'French Press' },
+  scoop:          { label: 'Scoop',          asset: '🥄', description: 'Scoop upward in a smooth arc',                      prop: 'Spoon' },
+  squeeze:        { label: 'Squeeze',        asset: '🧊', description: 'Squeeze to get some ice cubes',                     prop: 'Tongs' },
+  stir:           { label: 'Stir',           asset: '🥄', description: 'Stir in a circular motion',                         prop: 'Spoon' },
+  whisk:          { label: 'Whisk',          asset: '🧋', description: 'Whisk to get a smooth texture',                     prop: 'Whisk' },
+  grinding:       { label: 'Grinding',       asset: '🔄', description: 'Move in a circular motion to grind the coffee beans', prop: 'Coffee Grinder' },
+  left_right:     { label: 'Left-Right',     asset: '↔️',  description: 'Sway the tool side to side',                        prop: 'Sieve' },
+  up_down:        { label: 'Up-Down',        asset: '🍵',  description: 'Dip the tool up and down rhythmically',             prop: 'Teabag' },
 };
 
 /* ── Level Definitions ─────────────────────────────────── */
@@ -122,7 +118,6 @@ export const LEVELS: GameLevel[] = [
     steps: [
       { motion: 'scoop',      label: 'Scoop tea leaves',   duration: 8, description: 'Scoop the leaves into the cup' },
       { motion: 'pour',       label: 'Pour hot water',      duration: 8, description: 'Pour water over the leaves' },
-      { motion: 'tea_bag',    label: 'Dip the tea bag',     duration: 8, description: 'Dip up and down gently' },
       { motion: 'stir',       label: 'Stir it up',          duration: 8, description: 'Stir in a quick circle' },
     ],
   },
@@ -132,7 +127,7 @@ export const LEVELS: GameLevel[] = [
     description: 'A 5-step recipe — things are heating up.',
     passingScore: 60,
     steps: [
-      { motion: 'coffee_grinder', label: 'Grind the beans',   duration: 7, description: 'Grind coffee beans' },
+      { motion: 'grinding', label: 'Grind the beans',   duration: 7, description: 'Grind coffee beans' },
       { motion: 'scoop',           label: 'Scoop grounds',     duration: 7, description: 'Scoop into the filter' },
       { motion: 'pour',            label: 'Pour water',        duration: 6, description: 'Pour hot water over grounds' },
       { motion: 'stir',            label: 'Stir gently',       duration: 6, description: 'Stir to bloom' },
@@ -145,13 +140,13 @@ export const LEVELS: GameLevel[] = [
     description: 'The full 7-step routine — precision counts!',
     passingScore: 70,
     steps: [
-      { motion: 'coffee_grinder', label: 'Grind beans',      duration: 5, description: 'Grind fresh beans' },
-      { motion: 'sieve',          label: 'Sieve the grounds', duration: 5, description: 'Sieve out coarse bits' },
+      { motion: 'grinding', label: 'Grind beans',      duration: 5, description: 'Grind fresh beans' },
       { motion: 'scoop',          label: 'Scoop into filter', duration: 5, description: 'Precise scoop' },
       { motion: 'pour',           label: 'Pour over',         duration: 5, description: 'Steady pour' },
       { motion: 'whisk',          label: 'Whisk the milk',    duration: 5, description: 'Froth the milk' },
       { motion: 'squeeze',        label: 'Squeeze the bag',   duration: 5, description: 'Squeeze out the last drops' },
       { motion: 'stir',           label: 'Final stir',        duration: 4, description: 'Quick finishing stir' },
+      { motion: 'scoop',          label: 'Scoop into filter', duration: 5, description: 'Precise scoop' },
     ],
   },
 ];
