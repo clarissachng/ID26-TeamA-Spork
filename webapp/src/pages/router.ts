@@ -17,38 +17,88 @@ class Router {
     const prev = this.currentPage;
     if (prev === pageId) return;
 
-    // Exit current page
-    if (prev) {
+    const performNav = () => {
+      // Exit current page
+      if (prev) {
+        const prevEl = document.getElementById(prev);
+        if (prevEl) {
+          prevEl.classList.remove('active');
+          prevEl.classList.add('exit');
+          // Clean up exit class after transition
+          const onEnd = () => {
+            prevEl.classList.remove('exit');
+            prevEl.style.display = 'none';
+            prevEl.removeEventListener('transitionend', onEnd);
+          };
+          prevEl.addEventListener('transitionend', onEnd, { once: true });
+          // Fallback in case transitionend doesn't fire
+          setTimeout(() => {
+            prevEl.classList.remove('exit');
+            prevEl.style.display = 'none';
+          }, 600);
+        }
+      }
+
+      // Enter new page
+      const nextEl = document.getElementById(pageId);
+      if (nextEl) {
+        // Set data-* attributes for passing state (e.g. selected level)
+        if (meta) {
+          Object.entries(meta).forEach(([k, v]) => nextEl.dataset[k] = v);
+        }
+        // Make sure the new page is visible
+        nextEl.style.display = 'block';
+        // Small delay so the exit transition can start first
+        requestAnimationFrame(() => {
+          nextEl.classList.add('active');
+        });
+      }
+
+      this.currentPage = pageId;
+      this.listeners.forEach(cb => cb(prev, pageId));
+    };
+
+    const hero = document.getElementById('main-menu-hero');
+
+    // Custom transition: leaving main menu → slide hero down, new page from top
+    if (prev === 'main-menu' && pageId !== 'main-menu' && hero) {
+      hero.classList.add('slide-out-down');
+
+      setTimeout(() => {
+        const incoming = document.getElementById(pageId);
+        if (incoming) {
+          incoming.classList.add('slide-in-from-top');
+        }
+        performNav();
+      }, 500);
+
+      return;
+    }
+
+    // Custom transition: returning to main menu → current page up, hero from below
+    if (prev && prev !== 'main-menu' && pageId === 'main-menu' && hero) {
       const prevEl = document.getElementById(prev);
       if (prevEl) {
-        prevEl.classList.remove('active');
-        prevEl.classList.add('exit');
-        // Clean up exit class after transition
-        const onEnd = () => {
-          prevEl.classList.remove('exit');
-          prevEl.removeEventListener('transitionend', onEnd);
-        };
-        prevEl.addEventListener('transitionend', onEnd, { once: true });
-        // Fallback in case transitionend doesn't fire
-        setTimeout(() => prevEl.classList.remove('exit'), 600);
+        prevEl.classList.add('slide-out-up-page');
       }
+
+      // Prepare hero to rise from below
+      hero.classList.remove('slide-out-down');
+      hero.classList.add('slide-in-from-bottom');
+
+      setTimeout(() => {
+        if (prevEl) {
+          prevEl.classList.remove('slide-out-up-page');
+        }
+        hero.classList.remove('slide-in-from-bottom');
+        performNav();
+      }, 500);
+
+      return;
     }
 
-    // Enter new page
-    const nextEl = document.getElementById(pageId);
-    if (nextEl) {
-      // Set data-* attributes for passing state (e.g. selected level)
-      if (meta) {
-        Object.entries(meta).forEach(([k, v]) => nextEl.dataset[k] = v);
-      }
-      // Small delay so the exit transition can start first
-      requestAnimationFrame(() => {
-        nextEl.classList.add('active');
-      });
-    }
-
-    this.currentPage = pageId;
-    this.listeners.forEach(cb => cb(prev, pageId));
+    // Fallback: default fade/slide transitions
+    performNav();
   }
 
   /** Get the currently active page */

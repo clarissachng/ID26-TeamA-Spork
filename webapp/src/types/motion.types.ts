@@ -82,9 +82,9 @@ export const ALL_MOTIONS: MotionType[] = [
 export const MOTION_META: Record<MotionType, { label: string; asset: string; description: string; prop: string }> = {
   pour:           { label: 'Pour',           asset: '/assets/front_milk.PNG', description: 'Pour to get some water/milk to your drink',          prop: 'Pour' },
   press_down:     { label: 'Press Down',     asset: '/assets/front_press.PNG', description: 'Press the tool firmly downward',                    prop: 'French Press' },
-  scoop:          { label: 'Scoop',          asset: '/assets/front_tea.PNG', description: 'Scoop upward in a smooth arc',                      prop: 'Spoon' },
-  squeeze:        { label: 'Squeeze',        asset: '/assets/front_milk.PNG', description: 'Squeeze to get some ice cubes',                     prop: 'Tongs' },
-  stir:           { label: 'Stir',           asset: '/assets/front_tea.PNG', description: 'Stir in a circular motion',                         prop: 'Spoon' },
+  scoop:          { label: 'Scoop',          asset: '/assets/front_spork.png', description: 'Scoop upward in a smooth arc',                      prop: 'Spoon' },
+  squeeze:        { label: 'Squeeze',        asset: '/assets/front_tongs.png', description: 'Squeeze to get some ice cubes',                     prop: 'Tongs' },
+  stir:           { label: 'Stir',           asset: '/assets/front_spork.png', description: 'Stir in a circular motion',                         prop: 'Spoon' },
   whisk:          { label: 'Whisk',          asset: '/assets/front_whisk.PNG', description: 'Whisk to get a smooth texture',                     prop: 'Whisk' },
   grinding:       { label: 'Grinding',       asset: '/assets/front_grinder.PNG', description: 'Move in a circular motion to grind the coffee beans', prop: 'Coffee Grinder' },
   left_right:     { label: 'Left-Right',     asset: '/assets/front_sieve.PNG', description: 'Sway the tool side to side',                        prop: 'Sieve' },
