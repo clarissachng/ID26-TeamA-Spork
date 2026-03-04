@@ -33,47 +33,10 @@ export function createMainMenu(): HTMLElement {
   page.className = 'page menu-bg';
 
   page.innerHTML = `
-    <!-- ── Top-right controls: Theme toggle + BGM Picker ── -->
-    <div class="top-right-controls">
-      <button class="theme-toggle" id="theme-toggle" aria-label="Toggle light/dark theme">
-        <span class="theme-toggle__icon" id="theme-icon">☀️</span>
-        <span id="theme-label">Light</span>
-      </button>
-      <div class="bgm-picker" id="bgm-picker">
-        <button class="bgm-picker__toggle" id="bgm-toggle" aria-label="Background music">
-          <span class="bgm-picker__note">♪</span>
-          <span class="bgm-picker__label">Music</span>
-        </button>
-        <div class="bgm-picker__panel hidden" id="bgm-panel">
-        <div class="bgm-picker__panel-title">Background Music</div>
-        <ul class="bgm-picker__track-list" id="bgm-track-list"></ul>
-        <div class="bgm-picker__volume-row">
-          <span class="bgm-picker__vol-icon">🔈</span>
-          <input type="range" class="bgm-picker__volume" id="bgm-volume"
-                 min="0" max="1" step="0.05" value="0.5" />
-          <span class="bgm-picker__vol-icon">🔊</span>
-        </div>
-      </div>
-    </div>
-    </div>
-
-    <!-- ── Split layout: illustration left, menu right ── -->
-    <div class="menu-split">
-      <!-- Left: large illustration -->
-      <div class="menu-split__left">
-        <div class="menu-illustration" id="menu-illustration">
-          <img
-            src="/assets/main_page.gif"
-            alt="Illustrated tea and coffee brewing props"
-            class="menu-illustration__img"
-            draggable="false"
-          />
-        </div>
-      </div>
-
-      <!-- Right: title + nav buttons -->
-      <div class="menu-split__right">
-        <div class="menu-logo-placeholder" aria-label="While It Steeps logo">
+    <!-- ── Main hero: logo top-left, illustration on table ── -->
+    <div class="main-menu-hero" id="main-menu-hero">
+      <header class="menu-header">
+        <div class="menu-logo-block" id="main-menu-logo" aria-label="While It Steeps logo">
           <img
             src="/assets/logo.png"
             alt="While It Steeps - motion brewing game logo"
@@ -81,25 +44,56 @@ export function createMainMenu(): HTMLElement {
             width="120"
             height="120"
           />
-          <h1>While It Steeps</h1>
-          <p class="subtitle">a motion brewing game for everyone</p>
+          <div class="menu-logo-text">
+            <h1>While It Steeps</h1>
+            <p class="subtitle">a motion brewing game for everyone</p>
+          </div>
         </div>
 
-        <nav class="stack stagger-children" role="navigation" aria-label="Main Menu">
-          <button class="btn btn--primary btn--large" data-action="play">
-            <span class="btn-icon btn-play-icon"></span>
-            Play
+        <!-- ── Top-right controls: Theme toggle + BGM Picker ── -->
+        <div class="top-right-controls">
+          <button class="theme-toggle" id="theme-toggle" aria-label="Toggle light/dark theme">
+            <span class="theme-toggle__icon" id="theme-icon">☀️</span>
+            <span id="theme-label">Light</span>
           </button>
-          <button class="btn btn--sage btn--large" data-action="tutorial">
-            <span class="btn-icon btn-learn-icon"></span>
-            Tutorial
-          </button>
-          <button class="btn btn--rose btn--large" data-action="choreograph">
-            <span class="btn-icon btn-create-icon"></span>
-            Choreograph
-          </button>
-        </nav>
+          <div class="bgm-picker" id="bgm-picker">
+            <button class="bgm-picker__toggle" id="bgm-toggle" aria-label="Background music">
+              <span class="bgm-picker__note">♪</span>
+              <span class="bgm-picker__label">Music</span>
+            </button>
+            <div class="bgm-picker__panel hidden" id="bgm-panel">
+              <div class="bgm-picker__panel-title">Background Music</div>
+              <ul class="bgm-picker__track-list" id="bgm-track-list"></ul>
+              <div class="bgm-picker__volume-row">
+                <span class="bgm-picker__vol-icon">🔈</span>
+                <input
+                  type="range"
+                  class="bgm-picker__volume"
+                  id="bgm-volume"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value="0.5"
+                />
+                <span class="bgm-picker__vol-icon">🔊</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- ── Illustration sitting on warm wooden table ── -->
+      <div class="menu-stage">
+        <div class="menu-illustration" id="menu-illustration">
+        </div>
       </div>
+
+      <!-- ── Centered navigation buttons ── -->
+      <nav class="menu-nav" id="menu-nav">
+        <button class="menu-nav-btn menu-nav-btn--play" data-action="play">Play</button>
+        <button class="menu-nav-btn menu-nav-btn--tutorial" data-action="tutorial">Tutorial</button>
+        <button class="menu-nav-btn menu-nav-btn--choreograph" data-action="choreograph">Choreograph</button>
+      </nav>
     </div>
 
     <!-- ── Arduino Connection Button (bottom-left) ── -->
@@ -109,15 +103,19 @@ export function createMainMenu(): HTMLElement {
     </button>
   `;
 
-  // ── Wire up nav button clicks ──
+  // ── Wire up illustration hotspots as navigation buttons ──
+  function navigateFromHero(target: 'level-select' | 'tutorial' | 'choreograph'): void {
+    router.go(target);
+  }
+
   page.querySelector('[data-action="play"]')!
-    .addEventListener('click', () => router.go('level-select'));
+    .addEventListener('click', () => navigateFromHero('level-select'));
 
   page.querySelector('[data-action="tutorial"]')!
-    .addEventListener('click', () => router.go('tutorial'));
+    .addEventListener('click', () => navigateFromHero('tutorial'));
 
   page.querySelector('[data-action="choreograph"]')!
-    .addEventListener('click', () => router.go('choreograph'));
+    .addEventListener('click', () => navigateFromHero('choreograph'));
 
   // ═══════════════════════════════════════════════════════
   //  BGM Picker

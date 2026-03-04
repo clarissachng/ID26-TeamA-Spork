@@ -1,6 +1,6 @@
 @font-face {
   font-family: 'galaxy';
-  src: url('/assets/GalaxieCopernicus-BookItalic.ttf') format('truetype');
+  src: url('/assets/font/GalaxieCopernicus-BookItalic.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
   font-display: swap;
@@ -144,6 +144,7 @@ body {
   width: 100%;
   height: 100dvh;
   overflow: hidden;
+  background-color: var(--bg-deep);
 }
 
 /* ── Page Containers ───────────────────────────────────── */
@@ -174,6 +175,60 @@ body {
   opacity: 0;
   transform: translateY(-12px) scale(0.97);
   pointer-events: none;
+}
+
+/* ── Global page slide transitions for main menu handoff ── */
+.slide-out-down {
+  transform: translateY(120vh);
+  opacity: 0;
+  transition:
+    transform 0.5s ease-in,
+    opacity 0.3s ease-in;
+}
+
+.slide-in-from-top {
+  animation: slideInTop 0.5s ease-out forwards;
+}
+
+@keyframes slideInTop {
+  from {
+    transform: translateY(-100vh);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.slide-out-up-page {
+  animation: slideOutUp 0.5s ease-in forwards;
+}
+
+@keyframes slideOutUp {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-120vh);
+    opacity: 0;
+  }
+}
+
+.slide-in-from-bottom {
+  animation: slideInBottom 0.5s ease-out forwards;
+}
+
+@keyframes slideInBottom {
+  from {
+    transform: translateY(120vh);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 /* ── Typography ────────────────────────────────────────── */
@@ -791,66 +846,38 @@ p {
 }
 
 /* ── Menu Split Layout ("A Little to the Left" style) ──── */
-.menu-split {
-  display: flex;
+/* Main menu hero — logo top-left, illustration anchored to table */
+.main-menu-hero {
+  position: relative;
   width: 100%;
   height: 100%;
-  position: relative;
+  padding: var(--space-lg) var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
   z-index: 2;
 }
 
-.menu-split__left {
-    flex: 0 0 65%;
-    display: flex;
-    align-items: flex-end;
-    justify-content: flex-start;
-    position: relative;
-    overflow: visible;
-    margin-bottom: 2em;
-    margin-left: 2em;
-}
-
-.menu-split__right {
-  flex: 1;
+.menu-header {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;           /* push content to the right        */
+  align-items: center;
   justify-content: center;
   gap: var(--space-xl);
-  padding: var(--space-2xl) var(--space-2xl) var(--space-2xl) var(--space-xl);
-  padding-right: 3em;
+  flex-direction: column;
+  margin-top: 5em;
 }
 
-/* ── Menu Illustration (left-side props GIF) ───────────── */
-.menu-illustration {
-  width: 130%;                     /* 30% larger than column           */
-  max-width: 1000px;               /* ← increased max width            */
-  pointer-events: none;
-  padding: 0;
-  margin-bottom: -20px;            /* overlap bottom edge slightly     */
-}
-
-.menu-illustration__img {
-  display: block;
-  width: 100%;                     /* scales to container width        */
-  height: auto;
-  object-fit: contain;
-  filter: drop-shadow(0 -4px 20px rgba(0,0,0,0.4));
-  transition: opacity var(--duration-mid) var(--ease-out-soft);
-}
-
-/* ── Right-side menu content alignment ─────────────────── */
-.menu-split__right .menu-logo-placeholder {
-  text-align: right;
-  margin-right: 3.5em;
+.menu-logo-block {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  justify-content: center;
 }
 
 .menu-logo-img {
   display: block;
   width: 120px;
   height: auto;
-  margin-bottom: var(--space-sm);
-  margin-left: auto;
   filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.2));
   transition: transform var(--duration-mid) var(--ease-spring);
 }
@@ -859,88 +886,355 @@ p {
   transform: scale(1.05) translateY(-2px);
 }
 
-.menu-split__right .stack {
-  align-items: flex-end;           /* buttons align right              */
+.menu-logo-text h1 {
+  margin: 0;
 }
 
-/* ── Menu buttons: transparent, text-only, slide-left hover ── */
-#main-menu .btn--primary,
-#main-menu .btn--sage,
-#main-menu .btn--rose {
-  background: transparent;
-  box-shadow: none;
-  transition: transform 0.2s ease;
+.menu-logo-text .subtitle {
+  margin-top: var(--space-xs);
 }
 
-#main-menu .btn--primary::after,
-#main-menu .btn--sage::after,
-#main-menu .btn--rose::after {
-  display: none;                   /* remove gradient overlay          */
+.top-right-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
 }
 
-#main-menu .btn--primary:hover,
-#main-menu .btn--sage:hover,
-#main-menu .btn--rose:hover {
-  transform: translateX(-17px) !important;
-  background: transparent;
-  box-shadow: none;
+/* ── Illustration stage ── */
+.menu-stage {
+  position: relative;
+  width: 100%;
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
 }
 
-#main-menu .btn--primary:active,
-#main-menu .btn--sage:active,
-#main-menu .btn--rose:active {
-  transform: translateX(-4px);
-  box-shadow: none;
+.menu-illustration {
+  position: relative;
+  width: 100%;
 }
 
-/* Hide icon squares on menu buttons */
-#main-menu .btn-icon {
-  display: none;
+.menu-illustration__img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 -4px 20px rgba(0, 0, 0, 0.25));
+}
+
+/* (legacy) individual menu items — kept for reference */
+.menu-item {
+  position: absolute;
+  bottom: 10%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 26%;
+  max-width: 420px;
+  height: auto;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.menu-item--press {
+  left: 16%;
+  bottom: 18%;
+  width: 15%;
+}
+
+.menu-item--grinder {
+  left: 30%;
+  bottom: 18%;
+  width: 13%;
+}
+
+.menu-item--bowl {
+  bottom: 14%;
+  left: 50%;
+  width: 24%;
+}
+
+.menu-item--milk {
+  left: 64%;
+  bottom: 20%;
+  width: 16%;
+}
+
+.menu-item--whisk {
+  left: 79%;
+  bottom: 22%;
+  width: 10%;
+}
+
+.menu-item--sieve {
+  left: 82%;
+  bottom: 10%;
+  width: 22%;
+}
+
+.menu-item--tea {
+  left: 8%;
+  bottom: 14%;
+  width: 11%;
+}
+
+.jitter-item {
+  animation: menuJitterBase 0.7s steps(3, end) infinite alternate;
+  transform-origin: center bottom;
+}
+
+/* Base jitter – small snap in multiple directions */
+@keyframes menuJitterBase {
+  0% {
+    transform: translateX(-50%) translateY(0) rotate(0deg);
+  }
+  33% {
+    transform: translateX(-50%) translateY(-2px) rotate(-0.6deg);
+  }
+  66% {
+    transform: translateX(calc(-50% + 2px)) translateY(1px) rotate(0.6deg);
+  }
+  100% {
+    transform: translateX(-50%) translateY(0) rotate(0deg);
+  }
+}
+
+/* Slightly different timings / phases per item for a more random feel */
+.menu-item--press.jitter-item {
+  animation-duration: 0.8s;
+  animation-delay: -0.1s;
+}
+
+.menu-item--grinder.jitter-item {
+  animation-duration: 0.65s;
+  animation-delay: -0.3s;
+}
+
+.menu-item--bowl.jitter-item {
+  animation-duration: 0.75s;
+  animation-delay: -0.2s;
+}
+
+.menu-item--milk.jitter-item {
+  animation-duration: 0.7s;
+  animation-delay: -0.4s;
+}
+
+.menu-item--whisk.jitter-item {
+  animation-duration: 0.6s;
+  animation-delay: -0.15s;
+}
+
+.menu-item--sieve.jitter-item {
+  animation-duration: 0.72s;
+  animation-delay: -0.5s;
+}
+
+.menu-item--tea.jitter-item {
+  animation-duration: 0.68s;
+  animation-delay: -0.25s;
+}
+
+/* ── Menu Navigation Buttons (centered on page) ── */
+.menu-nav {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-lg);
+  z-index: 10;
+}
+
+.menu-nav-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 2.4rem;
+  letter-spacing: 0.04em;
+  color: var(--text-primary);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  padding: 0.4rem 1.6rem;
+  border-radius: 8px;
+  transition:
+    transform 0.25s ease,
+    color 0.25s ease,
+    text-shadow 0.25s ease;
+}
+
+.menu-nav-btn:hover {
+  transform: scale(1.08);
+}
+
+.menu-nav-btn--play {
+  color: var(--accent-warm);
+}
+
+.menu-nav-btn--play:hover {
+  text-shadow: 0 0 18px var(--accent-warm);
+}
+
+.menu-nav-btn--tutorial {
+  color: var(--accent-sage);
+}
+
+.menu-nav-btn--tutorial:hover {
+  text-shadow: 0 0 18px var(--accent-sage);
+}
+
+.menu-nav-btn--choreograph {
+  color: var(--accent-rose);
+}
+
+.menu-nav-btn--choreograph:hover {
+  text-shadow: 0 0 18px var(--accent-rose);
+}
+
+/* (legacy) Hotspots mapped onto illustration items */
+.menu-hotspot {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(2px);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 12px;
+  cursor: pointer;
+  pointer-events: auto;
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    background 0.25s ease;
+}
+
+.menu-hotspot::before {
+  content: '';
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: -8%;
+  height: 18%;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 999px;
+  filter: blur(8px);
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease;
+}
+
+.menu-hotspot__label {
+  position: absolute;
+  left: 50%;
+  bottom: -1.8rem;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  opacity: 1;
+  color: var(--text-secondary);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease;
+}
+
+.menu-hotspot__label--terracotta {
+  color: var(--accent-warm);
+}
+
+.menu-hotspot__label--sage {
+  color: var(--accent-sage);
+}
+
+.menu-hotspot__label--rose {
+  color: var(--accent-rose);
+}
+
+.menu-hotspot:hover {
+  transform: translateY(-6px);
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.menu-hotspot:hover::before {
+  opacity: 1;
+  transform: translateY(10px);
+}
+
+.menu-hotspot:hover .menu-hotspot__label {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Approximate hotspot positions on the illustration */
+.hotspot-bowl {
+  left: 44%;
+  top: 42%;
+  width: 18%;
+  height: 38%;
+}
+
+.hotspot-milk {
+  left: 63%;
+  top: 22%;
+  width: 16%;
+  height: 58%;
+}
+
+.hotspot-grinder {
+  left: 28%;
+  top: 30%;
+  width: 14%;
+  height: 50%;
 }
 
 /* ── Responsive: stack vertically on narrow screens ────── */
 @media (max-width: 768px) {
-  .menu-split {
-    flex-direction: column;
+  .main-menu-hero {
+    padding: var(--space-md);
   }
-  .menu-split__left {
-    flex: 0 0 auto;
-    max-height: 45vh;
+  .menu-header {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+  .menu-logo-block {
+    max-width: 60%;
+  }
+  .menu-stage {
+    padding-bottom: var(--space-lg);
   }
   .menu-illustration {
     width: 100%;
   }
-  .menu-split__right {
-    align-items: center;
-    text-align: center;
-    padding: var(--space-lg);
-  }
-  .menu-split__right .menu-logo-placeholder {
-    text-align: center;
-  }
-  .menu-split__right .stack {
-    align-items: center;
-  }
 }
 
 /* ── Named background classes (for asset swap) ─────────── */
-/* ── Named background classes (for asset swap) ──────────── */
 .menu-bg {
-  /* background-image: url('/assets/menu-bg.jpg'); */
+  background-image: url('/assets/new_mainwithtable.gif');
   background-size: cover;
   background-position: center;
 }
 
 .level-select-bg {
-  /* background-image: url('/assets/level-select-bg.jpg'); */
+  background-image: url('/assets/main_table.png');
+  background-size: cover;
+  background-position: center;
 }
 
 .tutorial-bg {
-  /* background-image: url('/assets/tutorial-bg.jpg'); */
+  background-image: url('/assets/main_table.png');
+  background-size: cover;
+  background-position: center;
 }
 
 .choreograph-bg {
-  /* background-image: url('/assets/choreograph-bg.jpg'); */
+  background-image: url('/assets/main_table.png');
+  background-size: cover;
+  background-position: center;
 }
 
 /* ── Play Page — game rounds with kitchen background ── */
