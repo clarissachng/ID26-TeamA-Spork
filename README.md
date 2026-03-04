@@ -31,7 +31,9 @@ To bridge the physical and digital realms, a custom web application—built with
 
 <a target="_blank" href="https://docs.google.com/spreadsheets/d/1WJlrQEFoqLSk08SffmYSsfnndG825bTncRuUyI96l8E/edit?gid=0#gid=0">Main Interactive Devices Hub Link (Google Sheet)</a>
 
-<img width="auto" height="400" src="/assets/sticky-notes.png">
-
-first iteration for software 
-<img width="auto" height="400" src="/assets/first_iteration.gif">
+| Picture | Description |
+| :--- | :--- |
+| <img width="400" height="auto" src="/assets/sticky-notes.png"> | **Sticky Notes**: A collection of colourful notes, typically used for agile methodology, kanban boards, or quick reminders during a sprint. |
+| <img width="400" height="auto" src="assets/real_objects.JPG"> | **Real Objects**: A photograph containing a variety of everyday items, often used as a dataset for training computer vision models. |
+| <img width="400" height="auto" src="/assets/first_iteration.gif"> | **First iteration for software**: First idea dump for the game|
+| <img width="400" height="auto" src="/assets/second_iteration.gif"> | **Second iteration for software**: Refined the main page to reflect more like the actual board placement -- more visuals imported|
