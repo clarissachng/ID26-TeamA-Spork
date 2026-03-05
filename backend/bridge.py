@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
-Serial → WebSocket Bridge for Game
+Serial -> WebSocket Bridge for Game
 ====================================
 Reads magnetometer JSON from Arduino over serial, runs real-time
-motion detection using saved profiles, and broadcasts results to
-the webapp via WebSocket (ws://localhost:8765).
+motion detection (DTW + amplitude/frequency gating), and broadcasts
+results to the webapp via WebSocket (ws://localhost:8765).
 
 Usage:
-    python bridge.py                        # auto-detect serial port
-    python bridge.py --port /dev/cu.usbmodem14201
-    python bridge.py --raw                  # just print raw data (hardware test)
+    python bridge.py                  # auto-detect port, guided detection
+    python bridge.py --raw            # just print raw data (hardware test)
+    python bridge.py --port COM3      # specify serial port
 
 Requirements:
     pip install pyserial websockets numpy
@@ -21,8 +21,10 @@ import json
 import math
 import sys
 import time
-from collections import deque
 from pathlib import Path
+
+# Fix Windows terminal encoding for special characters
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 import numpy as np
 import serial
@@ -30,326 +32,371 @@ import serial.tools.list_ports
 import websockets
 
 
-# ── Configuration ─────────────────────────────────────────
+# -- Configuration -----------------------------------------
 WS_HOST = "localhost"
 WS_PORT = 8765
 BAUD_RATE = 115200
-SAMPLE_RATE = 25          # Hz  (Arduino sends every 40ms)
-BUFFER_SIZE = 200          # ~8 seconds max capture window
-DETECTION_COOLDOWN = 1.5   # seconds after a detection before next one
-CALIBRATION_SAMPLES = 50   # first ~2 s used to learn the live noise floor
+SAMPLE_RATE = 25           # Hz  (Arduino sends every 40ms)
 
-# Segment detection parameters
-START_THRESHOLD_SAMPLES = 3    # consecutive samples above noise to START
-END_THRESHOLD_SAMPLES = 8      # consecutive samples below noise to END
-MIN_GESTURE_SAMPLES = 8        # minimum samples in a gesture (~0.3 s)
-MAX_GESTURE_SAMPLES = 150      # maximum gesture length (~6 s) — auto-end
+# Guided detection timing
+CALIBRATION_SECONDS = 2.0  # hold-still baseline collection
+COUNTDOWN_SECONDS = 3.0    # "get ready" phase before recording
+RECORDING_SECONDS = 8.0    # motion capture window
+COOLDOWN_SECONDS = 3.0     # pause between rounds (shows result)
+MIN_MOTION_SAMPLES = 8     # minimum samples in extracted motion portion
 
-# ── Load motion profiles ─────────────────────────────────
-PROFILES_PATH = Path(__file__).parent.parent / "plots" / "motion_profiles.json"
-WEBAPP_PROFILES_PATH = Path(__file__).parent.parent / "webapp" / "public" / "motion_profiles.json"
+# -- Load DTW templates ------------------------------------
+TEMPLATES_PATH = Path(__file__).parent.parent / "data" / "dtw_templates.json"
+RESAMPLE_LENGTH = 50  # must match build_templates.py
 
 
-def load_profiles() -> dict:
-    """Try to load motion_profiles.json from either location."""
-    for path in [PROFILES_PATH, WEBAPP_PROFILES_PATH]:
-        if path.exists():
-            with open(path) as f:
-                data = json.load(f)
-            print(f"  ✓ Loaded profiles from {path}")
-            return data
-    print("  ⚠ No motion_profiles.json found — using defaults")
+def load_templates() -> dict:
+    """Load DTW templates from dtw_templates.json."""
+    if TEMPLATES_PATH.exists():
+        with open(TEMPLATES_PATH) as f:
+            data = json.load(f)
+        templates = {}
+        for motion_name, tmpl_list in data.get("templates", {}).items():
+            templates[motion_name] = []
+            for t in tmpl_list:
+                templates[motion_name].append({
+                    "x": np.array(t["x"]),
+                    "y": np.array(t["y"]),
+                    "z": np.array(t["z"]),
+                    "mag": np.array(t["mag"]),
+                    "source": t.get("source_file", "?"),
+                    "mag_mean": t.get("mag_mean", 0),
+                    "mag_std": t.get("mag_std", 0),
+                    "dom_freq": t.get("dom_freq", 0),
+                    "zero_crossings": t.get("zero_crossings", 0),
+                    "axis_weights": t.get("axis_weights", [0.333, 0.333, 0.333]),
+                })
+        n_total = sum(len(v) for v in templates.values())
+        print(f"  [OK] Loaded {n_total} DTW templates across {len(templates)} motions")
+        return templates
+    print("  [!] No dtw_templates.json found -- run build_templates.py first!")
     return {}
 
 
-profiles = load_profiles()
-baseline = profiles.get("baseline_offsets", {"x": 0, "y": 0, "z": 0})
-motions = profiles.get("motions", {})
+templates_db = load_templates()
 
 
-# ── Auto-detect Arduino serial port ──────────────────────
+# -- Auto-detect Arduino serial port ----------------------
 def find_serial_port() -> str | None:
     """Find the first likely Arduino/USB serial port."""
     ports = serial.tools.list_ports.comports()
     for p in ports:
         desc = (p.description or "").lower()
         mfr = (p.manufacturer or "").lower()
-        if any(kw in desc for kw in ["arduino", "ch340", "cp210", "ftdi", "usbmodem", "usbserial", "esp32", "esp"]):
+        if any(kw in desc for kw in ["arduino", "ch340", "cp210", "ftdi", "usbmodem", "usbserial", "usb serial", "esp32", "esp"]):
             return p.device
         if any(kw in mfr for kw in ["arduino", "wch", "silicon labs", "ftdi", "espressif"]):
             return p.device
-    # Fallback: return any USB serial device or /dev/cu.usb* port
+    # Fallback: any non-Bluetooth serial port
     for p in ports:
         desc = (p.description or "").lower()
-        if "usb" in p.device.lower() or "usb serial" in desc:
+        if "bluetooth" not in desc:
             return p.device
     return None
 
 
-# ── Segment-then-classify motion detector ─────────────────
-class RealtimeDetector:
+# -- Guided motion detector --------------------------------
+start_event = asyncio.Event()
+
+
+class GuidedDetector:
     """
-    State-machine detector that captures gesture windows, then classifies them.
+    Guided motion detector with fixed-time phases.
 
-    States:
-      CALIBRATING -> collecting first N samples to learn baseline + noise floor
-      IDLE        -> waiting for motion to begin (signal rises above noise)
-      ACTIVE      -> gesture in progress, accumulating samples
-      COOLDOWN    -> just detected something, waiting before allowing next
-
-    When a gesture ends (signal returns to noise), the captured window is
-    analysed and scored against all motion profiles.
+    Cycle:
+      CALIBRATING (2s, hold still)
+      -> COUNTDOWN (3s, get ready)
+      -> RECORDING (8s, perform motion)
+      -> CLASSIFYING (instant)
+      -> COOLDOWN (3s, shows result)
+      -> back to CALIBRATING
     """
 
     CALIBRATING = "calibrating"
-    IDLE = "idle"
-    ACTIVE = "active"
+    COUNTDOWN = "countdown"
+    RECORDING = "recording"
+    CLASSIFYING = "classifying"
     COOLDOWN = "cooldown"
 
     def __init__(self):
-        # Auto-calibration
-        self._cal_samples: list[tuple[float, float, float]] = []
-        self._calibrated = False
+        self.state = self.CALIBRATING
+        self._phase_start = time.time()
+        self._cal_buffer: list[tuple[float, float, float]] = []
+        self._rec_buffer: list[tuple[float, float, float]] = []
+        self._baseline_x = 0.0
+        self._baseline_y = 0.0
+        self._baseline_z = 0.0
         self._noise_floor = 999.0
-        self._live_offset_x = 0.0
-        self._live_offset_y = 0.0
-        self._live_offset_z = 0.0
+        self.last_result: dict | None = None
+        self.last_mag = 0.0
+        self._printed_countdown: set[int] = set()
+        self._printed_recording: set[int] = set()
+        self._announced_phase = False
 
-        # State machine
-        self._state = self.CALIBRATING
-        self._consecutive_above = 0
-        self._consecutive_below = 0
-        self._gesture_buffer: list[dict] = []
-        self._cooldown_until: float = 0.0
+    @property
+    def phase_remaining(self) -> float:
+        elapsed = time.time() - self._phase_start
+        if self.state == self.CALIBRATING:
+            return max(0.0, CALIBRATION_SECONDS - elapsed)
+        if self.state == self.COUNTDOWN:
+            return max(0.0, COUNTDOWN_SECONDS - elapsed)
+        if self.state == self.RECORDING:
+            return max(0.0, RECORDING_SECONDS - elapsed)
+        if self.state == self.COOLDOWN:
+            return max(0.0, COOLDOWN_SECONDS - elapsed)
+        return 0.0
+
+    def _enter_state(self, new_state: str):
+        self.state = new_state
+        self._phase_start = time.time()
+        self._announced_phase = False
+        self._printed_countdown = set()
+        self._printed_recording = set()
 
     def add_sample(self, x_raw: float, y_raw: float, z_raw: float) -> list[dict]:
         """Feed a raw sensor sample. Returns detection events (usually 0 or 1)."""
+        xc = x_raw - self._baseline_x
+        yc = y_raw - self._baseline_y
+        zc = z_raw - self._baseline_z
+        self.last_mag = math.sqrt(xc * xc + yc * yc + zc * zc)
+        remaining = self.phase_remaining
 
         # -- CALIBRATING ------------------------------------------------
-        if self._state == self.CALIBRATING:
-            self._cal_samples.append((x_raw, y_raw, z_raw))
-            if len(self._cal_samples) >= CALIBRATION_SAMPLES:
-                arr = np.array(self._cal_samples)
-                self._live_offset_x = float(arr[:, 0].mean())
-                self._live_offset_y = float(arr[:, 1].mean())
-                self._live_offset_z = float(arr[:, 2].mean())
-                mags_cal = np.sqrt(
-                    (arr[:, 0] - self._live_offset_x) ** 2 +
-                    (arr[:, 1] - self._live_offset_y) ** 2 +
-                    (arr[:, 2] - self._live_offset_z) ** 2
-                )
-                self._noise_floor = max(
-                    15.0, float(mags_cal.mean() + 3.0 * mags_cal.std())
-                )
-                self._calibrated = True
-                self._state = self.IDLE
-                print(f"  Auto-calibrated live baseline: "
-                      f"x={self._live_offset_x:.1f} y={self._live_offset_y:.1f} "
-                      f"z={self._live_offset_z:.1f} uT")
-                print(f"    noise floor={self._noise_floor:.1f} uT")
+        if self.state == self.CALIBRATING:
+            if not self._announced_phase:
+                print(f"\n  [CALIBRATING] Hold the sensor still... ({CALIBRATION_SECONDS:.0f}s)")
+                self._announced_phase = True
+            self._cal_buffer.append((x_raw, y_raw, z_raw))
+            if remaining <= 0:
+                self._finish_calibration()
             return []
 
-        # Subtract live baseline
-        x = x_raw - self._live_offset_x
-        y = y_raw - self._live_offset_y
-        z = z_raw - self._live_offset_z
-        mag = math.sqrt(x * x + y * y + z * z)
-        sample = {"x": x, "y": y, "z": z, "mag": mag, "t": time.time()}
+        # -- COUNTDOWN --------------------------------------------------
+        if self.state == self.COUNTDOWN:
+            if not self._announced_phase:
+                print(f"\n  [COUNTDOWN] Get ready... motion starts in {COUNTDOWN_SECONDS:.0f}s")
+                self._announced_phase = True
+            self._cal_buffer.append((x_raw, y_raw, z_raw))
+            sec = int(remaining) + 1
+            if sec not in self._printed_countdown and sec <= COUNTDOWN_SECONDS:
+                self._printed_countdown.add(sec)
+                print(f"    {sec}...")
+            if remaining <= 0:
+                self._finish_countdown()
+            return []
 
-        is_above = mag > self._noise_floor
+        # -- RECORDING --------------------------------------------------
+        if self.state == self.RECORDING:
+            if not self._announced_phase:
+                print(f"\n  [RECORDING] >>> GO! Perform your motion now! ({RECORDING_SECONDS:.0f}s) <<<")
+                self._announced_phase = True
+            self._rec_buffer.append((x_raw, y_raw, z_raw))
+            sec = int(remaining)
+            if sec not in self._printed_recording and sec < RECORDING_SECONDS:
+                self._printed_recording.add(sec)
+                n = len(self._rec_buffer)
+                print(f"    {sec + 1}s remaining... ({n} samples, |mag|={self.last_mag:.1f})")
+            if remaining <= 0:
+                return self._finish_recording()
+            return []
 
         # -- COOLDOWN ---------------------------------------------------
-        if self._state == self.COOLDOWN:
-            if time.time() >= self._cooldown_until:
-                self._state = self.IDLE
-                self._consecutive_above = 0
-                self._consecutive_below = 0
-            return []
-
-        # -- IDLE: waiting for gesture to start -------------------------
-        if self._state == self.IDLE:
-            if is_above:
-                self._consecutive_above += 1
-                if self._consecutive_above >= START_THRESHOLD_SAMPLES:
-                    self._state = self.ACTIVE
-                    self._gesture_buffer = []
-                    self._consecutive_below = 0
-                    print("  >> Motion started - recording gesture...")
-            else:
-                self._consecutive_above = 0
-            return []
-
-        # -- ACTIVE: gesture in progress --------------------------------
-        if self._state == self.ACTIVE:
-            self._gesture_buffer.append(sample)
-
-            if not is_above:
-                self._consecutive_below += 1
-            else:
-                self._consecutive_below = 0
-
-            gesture_ended = (
-                self._consecutive_below >= END_THRESHOLD_SAMPLES
-                or len(self._gesture_buffer) >= MAX_GESTURE_SAMPLES
-            )
-
-            if gesture_ended:
-                # Trim trailing quiet samples
-                if self._consecutive_below > 0:
-                    self._gesture_buffer = self._gesture_buffer[:-self._consecutive_below]
-
-                n = len(self._gesture_buffer)
-                dur = n / SAMPLE_RATE
-
-                if n >= MIN_GESTURE_SAMPLES:
-                    print(f"  << Motion ended - {n} samples ({dur:.1f}s). Classifying...")
-                    result = self._classify_gesture(self._gesture_buffer)
-                    if result:
-                        self._state = self.COOLDOWN
-                        self._cooldown_until = time.time() + DETECTION_COOLDOWN
-                        return [result]
-                    else:
-                        print("    -> No confident match.")
+        if self.state == self.COOLDOWN:
+            if not self._announced_phase:
+                if self.last_result:
+                    print(f"\n  [RESULT] >>> {self.last_result['motion'].upper()} "
+                          f"(confidence: {self.last_result['confidence']:.0%}) <<<")
                 else:
-                    print(f"    -> Too short ({n} samples) - ignored.")
-
-                self._state = self.IDLE
-                self._gesture_buffer = []
-                self._consecutive_above = 0
-                self._consecutive_below = 0
+                    print(f"\n  [RESULT] No confident match.")
+                print(f"  [COOLDOWN] Next round in {COOLDOWN_SECONDS:.0f}s...")
+                self._announced_phase = True
+            if remaining <= 0:
+                self._cal_buffer = []
+                self._enter_state(self.CALIBRATING)
+            return []
 
         return []
 
-    def _classify_gesture(self, gesture: list[dict]) -> dict | None:
-        """
-        Classify a captured gesture window by scoring its features against
-        all motion profiles. Returns the best match or None.
-        """
-        xs = np.array([s["x"] for s in gesture])
-        ys = np.array([s["y"] for s in gesture])
-        zs = np.array([s["z"] for s in gesture])
-        mags = np.array([s["mag"] for s in gesture])
+    def _finish_calibration(self):
+        """Compute baseline and noise floor from calibration samples."""
+        if not self._cal_buffer:
+            self._enter_state(self.COUNTDOWN)
+            return
+        arr = np.array(self._cal_buffer)
+        self._baseline_x = float(arr[:, 0].mean())
+        self._baseline_y = float(arr[:, 1].mean())
+        self._baseline_z = float(arr[:, 2].mean())
+        centered = arr - np.array([self._baseline_x, self._baseline_y, self._baseline_z])
+        mags = np.sqrt(np.sum(centered ** 2, axis=1))
+        self._noise_floor = min(50.0, max(15.0, float(mags.mean() + 3.0 * mags.std())))
+        print(f"    baseline: x={self._baseline_x:.1f} y={self._baseline_y:.1f} z={self._baseline_z:.1f}")
+        print(f"    noise floor: {self._noise_floor:.1f} uT")
+        self._cal_buffer = []
+        self._enter_state(self.COUNTDOWN)
 
-        g_x_std = float(xs.std())
-        g_y_std = float(ys.std())
-        g_z_std = float(zs.std())
-        g_mag_mean = float(mags.mean())
-        g_mag_std = float(mags.std())
-        g_mag_max = float(mags.max())
+    def _finish_countdown(self):
+        """Use countdown samples as fresh baseline, then start recording."""
+        if self._cal_buffer:
+            arr = np.array(self._cal_buffer)
+            self._baseline_x = float(arr[:, 0].mean())
+            self._baseline_y = float(arr[:, 1].mean())
+            self._baseline_z = float(arr[:, 2].mean())
+            centered = arr - np.array([self._baseline_x, self._baseline_y, self._baseline_z])
+            mags = np.sqrt(np.sum(centered ** 2, axis=1))
+            self._noise_floor = min(50.0, max(15.0, float(mags.mean() + 3.0 * mags.std())))
+        self._rec_buffer = []
+        self._enter_state(self.RECORDING)
 
-        # Most active axis
-        axis_stds = {"x": g_x_std, "y": g_y_std, "z": g_z_std}
-        g_most_active = max(axis_stds, key=axis_stds.get)
+    def _finish_recording(self) -> list[dict]:
+        """Extract motion, classify, enter cooldown."""
+        n_samples = len(self._rec_buffer)
+        print(f"\n  [CLASSIFYING] Captured {n_samples} samples ({n_samples / SAMPLE_RATE:.1f}s)")
+        self.last_result = self._classify()
+        self._enter_state(self.COOLDOWN)
+        if self.last_result:
+            return [self.last_result]
+        return []
 
-        # Axis ratio vector (normalised)
-        total_std = g_x_std + g_y_std + g_z_std + 1e-6
-        g_ratio = np.array([g_x_std / total_std, g_y_std / total_std, g_z_std / total_std])
+    def _classify(self) -> dict | None:
+        """Classify the recorded motion using DTW with amplitude/frequency gating."""
+        if not templates_db:
+            print("    [!] No DTW templates loaded!")
+            return None
 
-        # Dominant frequency via FFT on magnitude signal
-        g_freq = 0.0
-        if len(mags) > 10:
-            centered = mags - mags.mean()
-            fft_vals = np.abs(np.fft.rfft(centered))
-            freqs = np.fft.rfftfreq(len(centered), d=1.0 / SAMPLE_RATE)
-            # Ignore DC (index 0) and very low freqs
-            if len(fft_vals) > 2:
-                dom_idx = np.argmax(fft_vals[1:]) + 1
-                g_freq = float(freqs[dom_idx])
+        arr = np.array(self._rec_buffer)
+        x = arr[:, 0] - self._baseline_x
+        y = arr[:, 1] - self._baseline_y
+        z = arr[:, 2] - self._baseline_z
+        mag = np.sqrt(x ** 2 + y ** 2 + z ** 2)
 
-        # Count zero-crossings on the most active axis (periodicity proxy)
-        active_data = {"x": xs, "y": ys, "z": zs}[g_most_active]
-        centered_active = active_data - active_data.mean()
-        zero_crossings = int(np.sum(np.diff(np.sign(centered_active)) != 0))
-        g_crossings_per_sec = zero_crossings / (len(gesture) / SAMPLE_RATE) if len(gesture) > 1 else 0
+        # Extract motion portion using noise floor threshold
+        above = mag > self._noise_floor
+        indices = np.where(above)[0]
 
-        print(f"    Gesture features: axis={g_most_active} freq={g_freq:.2f}Hz "
-              f"mag_mean={g_mag_mean:.0f} mag_std={g_mag_std:.0f} max={g_mag_max:.0f} "
-              f"x_std={g_x_std:.0f} y_std={g_y_std:.0f} z_std={g_z_std:.0f} "
-              f"zc/s={g_crossings_per_sec:.1f}")
+        if len(indices) < MIN_MOTION_SAMPLES:
+            print(f"    No significant motion detected ({len(indices)} samples above floor)")
+            return None
 
-        best_name = None
-        best_score = 0.0
-        all_scores: list[tuple[str, float]] = []
+        start_idx = max(0, indices[0] - 2)
+        end_idx = min(len(mag), indices[-1] + 3)
 
-        for name, profile in motions.items():
-            if name == "baseline":
-                continue
+        x_m = x[start_idx:end_idx]
+        y_m = y[start_idx:end_idx]
+        z_m = z[start_idx:end_idx]
+        mag_m = mag[start_idx:end_idx]
 
-            score = 0.0
-            p_mag_mean = profile.get("magnitude_mean", 50)
-            p_mag_std = profile.get("magnitude_std", 30)
-            p_freq = profile.get("dominant_freq_hz", 0.5)
+        n_motion = len(x_m)
+        print(f"    Motion portion: {n_motion} samples ({n_motion / SAMPLE_RATE:.1f}s)")
 
-            # 1. Frequency similarity (0-0.30) — STRONGEST differentiator
-            if p_freq > 0 and g_freq > 0:
-                freq_ratio = min(g_freq, p_freq) / max(g_freq, p_freq)
-                score += 0.30 * freq_ratio
-            elif p_freq == 0 and g_freq == 0:
-                score += 0.15  # both zero — neutral
+        # Resample + z-normalize
+        g = {
+            "x": self._z_normalize(self._resample(x_m, RESAMPLE_LENGTH)),
+            "y": self._z_normalize(self._resample(y_m, RESAMPLE_LENGTH)),
+            "z": self._z_normalize(self._resample(z_m, RESAMPLE_LENGTH)),
+            "mag": self._z_normalize(self._resample(mag_m, RESAMPLE_LENGTH)),
+        }
 
-            # 2. Most active axis match (0.20)
-            if g_most_active == profile.get("most_active_axis", "x"):
-                score += 0.20
+        # DTW against all templates
+        all_distances: list[tuple[str, float, str]] = []
+        for motion_name, tmpl_list in templates_db.items():
+            for tmpl in tmpl_list:
+                dist = self._multi_axis_dtw(g, tmpl)
+                all_distances.append((motion_name, dist, tmpl["source"]))
 
-            # 3. Axis ratio L1 distance (0-0.15) — L1 is more discriminating than cosine
-            px = profile.get("x_std", 1)
-            py = profile.get("y_std", 1)
-            pz = profile.get("z_std", 1)
-            pt = px + py + pz + 1e-6
-            p_ratio = np.array([px / pt, py / pt, pz / pt])
-            l1_dist = float(np.sum(np.abs(g_ratio - p_ratio)))  # 0 = identical, 2 = opposite
-            axis_score = max(0.0, 1.0 - l1_dist * 2.0)  # penalise differences
-            score += 0.15 * axis_score
+        all_distances.sort(key=lambda x: x[1])
 
-            # 4. Magnitude mean similarity (0-0.15)
-            if p_mag_mean > 0:
-                mag_ratio = min(g_mag_mean, p_mag_mean) / max(g_mag_mean, p_mag_mean)
-                score += 0.15 * mag_ratio
+        # Top 5
+        print(f"    Top 5 DTW matches:")
+        for name, dist, src in all_distances[:5]:
+            print(f"      {name:>16} = {dist:.2f}  ({src})")
 
-            # 5. Magnitude std similarity (0-0.10)
-            if p_mag_std > 0:
-                std_ratio = min(g_mag_std, p_mag_std) / max(g_mag_std, p_mag_std)
-                score += 0.10 * std_ratio
+        # k-NN k=3
+        k = min(3, len(all_distances))
+        top_k = all_distances[:k]
+        vote_counts: dict[str, int] = {}
+        vote_dists: dict[str, float] = {}
+        for name, dist, _ in top_k:
+            vote_counts[name] = vote_counts.get(name, 0) + 1
+            if name not in vote_dists or dist < vote_dists[name]:
+                vote_dists[name] = dist
 
-            # 6. Peak magnitude sanity check (0-0.10)
-            threshold = profile.get("detection_threshold_uT", 100)
-            if g_mag_max >= threshold * 0.4:
-                score += 0.10
-            elif g_mag_max >= threshold * 0.2:
-                score += 0.05
+        best_name = max(vote_counts, key=lambda n: (vote_counts[n], -vote_dists[n]))
+        best_dist = vote_dists[best_name]
+        best_votes = vote_counts[best_name]
 
-            all_scores.append((name, score))
+        REJECT_THRESHOLD = 12.0
+        if best_dist > REJECT_THRESHOLD:
+            print(f"    Rejected: dist {best_dist:.2f} > threshold {REJECT_THRESHOLD}")
+            return None
 
-            if score > best_score:
-                best_score = score
-                best_name = name
+        confidence = max(0.0, min(1.0, 1.0 - (best_dist / REJECT_THRESHOLD)))
 
-        # Print top 3 matches for debugging
-        all_scores.sort(key=lambda x: x[1], reverse=True)
-        top3 = all_scores[:3]
-        print(f"    Top 3: " + " | ".join(f"{n}={s:.3f}" for n, s in top3))
+        # Ambiguity check
+        second_best_dist = float("inf")
+        for name, dist, _ in all_distances:
+            if name != best_name:
+                second_best_dist = dist
+                break
+        gap = second_best_dist - best_dist
 
-        # Require minimum score AND gap between #1 and #2
-        if best_name and best_score >= 0.40:
-            second_score = all_scores[1][1] if len(all_scores) > 1 else 0
-            gap = best_score - second_score
+        if gap < 0.5 and confidence < 0.5:
+            print(f"    Ambiguous: gap={gap:.2f}, confidence={confidence:.0%}")
+            return None
 
-            # Reject near-ties unconditionally, or small gaps with low scores
-            if gap < 0.005 or (gap < 0.03 and best_score < 0.55):
-                print(f"    -> Ambiguous (gap={gap:.3f}) — rejected.")
-                return None
+        print(f"    -> {best_name} (dist={best_dist:.2f}, votes={best_votes}/{k}, "
+              f"gap={gap:.2f}, conf={confidence:.0%})")
 
-            confidence = min(1.0, best_score / 0.80)
-            print(f"    -> {best_name} (score={best_score:.3f}, gap={gap:.3f}, confidence={confidence:.0%})")
-            return {
-                "motion": best_name,
-                "detected": True,
-                "confidence": round(confidence, 2),
-            }
-        return None
+        return {
+            "motion": best_name,
+            "detected": True,
+            "confidence": round(confidence, 2),
+        }
+
+    # -- DTW helpers ----------------------------------------
+
+    @staticmethod
+    def _resample(signal: np.ndarray, target_len: int) -> np.ndarray:
+        if len(signal) == target_len:
+            return signal
+        x_old = np.linspace(0, 1, len(signal))
+        x_new = np.linspace(0, 1, target_len)
+        return np.interp(x_new, x_old, signal)
+
+    @staticmethod
+    def _z_normalize(signal: np.ndarray) -> np.ndarray:
+        std = signal.std()
+        if std < 1e-6:
+            return signal - signal.mean()
+        return (signal - signal.mean()) / std
+
+    @staticmethod
+    def _dtw_distance(a: np.ndarray, b: np.ndarray) -> float:
+        n, m = len(a), len(b)
+        w = max(5, abs(n - m))
+        cost = np.full((n + 1, m + 1), np.inf)
+        cost[0, 0] = 0.0
+        for i in range(1, n + 1):
+            jmin = max(1, i - w)
+            jmax = min(m, i + w)
+            for j in range(jmin, jmax + 1):
+                d = (a[i - 1] - b[j - 1]) ** 2
+                cost[i, j] = d + min(cost[i - 1, j], cost[i, j - 1], cost[i - 1, j - 1])
+        return float(np.sqrt(cost[n, m]))
+
+    def _multi_axis_dtw(self, gesture_axes: dict, template: dict) -> float:
+        """Equal-weight DTW across all 4 channels."""
+        total = 0.0
+        for axis in ["x", "y", "z", "mag"]:
+            total += self._dtw_distance(gesture_axes[axis], template[axis])
+        return total / 4.0
 
 
-# ── WebSocket server ──────────────────────────────────────
+# -- WebSocket server --------------------------------------
 connected_clients: set = set()
 
 
@@ -357,13 +404,20 @@ async def ws_handler(websocket):
     """Handle a new WebSocket client connection."""
     connected_clients.add(websocket)
     remote = websocket.remote_address
-    print(f"  🌐 Client connected: {remote}")
+    print(f"  [WS] Client connected: {remote}")
     try:
-        async for _ in websocket:
-            pass  # We only send, but keep connection alive
+        async for message in websocket:
+            try:
+                data = json.loads(message)
+                cmd = data.get("command", "")
+                if cmd == "start":
+                    start_event.set()
+                    print("  [WS] Received 'start' command")
+            except (json.JSONDecodeError, AttributeError):
+                pass
     finally:
         connected_clients.discard(websocket)
-        print(f"  🌐 Client disconnected: {remote}")
+        print(f"  [WS] Client disconnected: {remote}")
 
 
 async def broadcast(message: dict):
@@ -377,35 +431,33 @@ async def broadcast(message: dict):
     )
 
 
-# ── Serial reader ────────────────────────────────────────
+# -- Serial reader ----------------------------------------
 async def serial_reader(port: str, raw_mode: bool = False, baud_rate: int = BAUD_RATE):
     """
-    Read JSON lines from Arduino serial, run detection,
+    Read JSON lines from Arduino serial, run guided detection,
     and broadcast results over WebSocket.
     """
-    detector = RealtimeDetector()
+    detector = GuidedDetector()
     sample_count = 0
 
-    print(f"\n  📡 Opening serial port: {port} @ {baud_rate} baud")
+    print(f"\n  [SER] Opening serial port: {port} @ {baud_rate} baud")
 
     try:
         ser = serial.Serial(port, baud_rate, timeout=1)
     except serial.SerialException as e:
-        print(f"  ✗ Could not open {port}: {e}")
-        print("    Make sure Arduino is plugged in and the port is correct.")
+        print(f"  [X] Could not open {port}: {e}")
         print("    Available ports:")
         for p in serial.tools.list_ports.comports():
-            print(f"      {p.device}  — {p.description}")
+            print(f"      {p.device}  -- {p.description}")
         return
 
     # Flush stale data
     await asyncio.sleep(0.5)
     ser.reset_input_buffer()
-    print("  ✓ Serial connected — reading data...\n")
+    print("  [OK] Serial connected -- reading data...\n")
 
     try:
         while True:
-            # Read in executor to avoid blocking the event loop
             line = await asyncio.get_event_loop().run_in_executor(
                 None, ser.readline
             )
@@ -428,18 +480,12 @@ async def serial_reader(port: str, raw_mode: bool = False, baud_rate: int = BAUD
             sample_count += 1
 
             if raw_mode:
-                # Raw mode: just print values for hardware testing
-                # Quick baseline subtraction for display only
-                x_d = x_raw - baseline.get("x", 0)
-                y_d = y_raw - baseline.get("y", 0)
-                z_d = z_raw - baseline.get("z", 0)
-                mag_d = math.sqrt(x_d * x_d + y_d * y_d + z_d * z_d)
+                mag_d = math.sqrt(x_raw * x_raw + y_raw * y_raw + z_raw * z_raw)
                 print(
                     f"  #{sample_count:>5}  "
                     f"x={x_raw:>8.1f}  y={y_raw:>8.1f}  z={z_raw:>8.1f}  "
-                    f"(cal: x={x_d:>7.1f} y={y_d:>7.1f} z={z_d:>7.1f}  |mag|={mag_d:>7.1f})"
+                    f"|mag|={mag_d:>7.1f}"
                 )
-                # Also broadcast raw data so the webapp can display it
                 await broadcast({
                     "raw": True,
                     "x": round(x_raw, 2),
@@ -449,40 +495,28 @@ async def serial_reader(port: str, raw_mode: bool = False, baud_rate: int = BAUD
                 })
                 continue
 
-            # Detection mode — pass RAW readings; detector does its
-            # own live-calibration (per-recording style baseline)
+            # Guided detection mode
             events = detector.add_sample(x_raw, y_raw, z_raw)
 
-            # Print magnitude periodically so you can see the sensor is alive
-            if sample_count % 25 == 0:
-                # Use detector's live baseline for display
-                x_c = x_raw - detector._live_offset_x
-                y_c = y_raw - detector._live_offset_y
-                z_c = z_raw - detector._live_offset_z
-                mag_c = math.sqrt(x_c * x_c + y_c * y_c + z_c * z_c)
-                print(
-                    f"  📊 #{sample_count:>5}  |mag|={mag_c:>7.1f} µT  "
-                    f"(x={x_c:>7.1f} y={y_c:>7.1f} z={z_c:>7.1f})"
-                )
+            # Broadcast state on every sample
+            await broadcast({
+                "sensor": True,
+                "x": round(x_raw - detector._baseline_x, 2),
+                "y": round(y_raw - detector._baseline_y, 2),
+                "z": round(z_raw - detector._baseline_z, 2),
+                "mag": round(detector.last_mag, 2),
+                "state": detector.state,
+                "phase_remaining": round(detector.phase_remaining, 1),
+                "noise_floor": round(detector._noise_floor, 1),
+                "recording_samples": len(detector._rec_buffer),
+            })
 
             for event in events:
                 print(
-                    f"  🎯 Detected: {event['motion']:>12}  "
+                    f"\n  [>>] DETECTED: {event['motion'].upper()}  "
                     f"confidence={event['confidence']:.0%}"
                 )
                 await broadcast(event)
-
-            # Periodic heartbeat (every ~2s) so clients know we're alive
-            if sample_count % 50 == 0:
-                x_h = x_raw - detector._live_offset_x
-                y_h = y_raw - detector._live_offset_y
-                z_h = z_raw - detector._live_offset_z
-                mag_h = math.sqrt(x_h * x_h + y_h * y_h + z_h * z_h)
-                await broadcast({
-                    "heartbeat": True,
-                    "samples": sample_count,
-                    "mag": round(mag_h, 2),
-                })
 
     except KeyboardInterrupt:
         pass
@@ -491,57 +525,45 @@ async def serial_reader(port: str, raw_mode: bool = False, baud_rate: int = BAUD
         print("\n  Serial port closed.")
 
 
-# ── Main ──────────────────────────────────────────────────
+# -- Main --------------------------------------------------
 async def main():
-    parser = argparse.ArgumentParser(description="While It Steeps: Arduino → WebSocket bridge")
-    parser.add_argument(
-        "--port", "-p",
-        help="Serial port (e.g. /dev/cu.usbmodem14201 or COM3). Auto-detects if omitted.",
-    )
-    parser.add_argument(
-        "--raw", "-r",
-        action="store_true",
-        help="Raw mode — just print sensor values (for hardware testing).",
-    )
-    parser.add_argument(
-        "--baud", "-b",
-        type=int,
-        default=BAUD_RATE,
-        help=f"Baud rate (default: {BAUD_RATE})",
-    )
+    parser = argparse.ArgumentParser(description="While It Steeps: Arduino -> WebSocket bridge")
+    parser.add_argument("--port", "-p", help="Serial port. Auto-detects if omitted.")
+    parser.add_argument("--raw", "-r", action="store_true", help="Raw mode -- just print sensor values.")
+    parser.add_argument("--baud", "-b", type=int, default=BAUD_RATE, help=f"Baud rate (default: {BAUD_RATE})")
     args = parser.parse_args()
 
-    baud = args.baud
-
-    # Find serial port
     port = args.port or find_serial_port()
     if not port:
-        print("  ✗ No Arduino serial port found.")
-        print("    Available ports:")
+        print("  [X] No Arduino serial port found.")
         for p in serial.tools.list_ports.comports():
-            print(f"      {p.device}  — {p.description}")
-        print("\n    Specify manually:  python bridge.py --port /dev/cu.usbmodem14201")
+            print(f"      {p.device}  -- {p.description}")
         sys.exit(1)
 
-    print(r"""
-    ╔═══════════════════════════════════════╗
-    ║   While It Steeps — Arduino Bridge    ║
-    ╚═══════════════════════════════════════╝
-    """)
-
-    mode = "RAW (hardware test)" if args.raw else "DETECTION"
+    mode = "RAW (hardware test)" if args.raw else "GUIDED DETECTION"
+    print()
+    print("  ===========================================")
+    print("    While It Steeps -- Arduino Bridge")
+    print("  ===========================================")
+    print()
     print(f"  Mode : {mode}")
     print(f"  Port : {port}")
-    print(f"  Baud : {baud}")
+    print(f"  Baud : {args.baud}")
     print(f"  WS   : ws://{WS_HOST}:{WS_PORT}")
+    print()
+    print(f"  Detection cycle:")
+    print(f"    1. CALIBRATE   {CALIBRATION_SECONDS:.0f}s  (hold still)")
+    print(f"    2. COUNTDOWN   {COUNTDOWN_SECONDS:.0f}s  (get ready)")
+    print(f"    3. RECORDING   {RECORDING_SECONDS:.0f}s  (perform motion)")
+    print(f"    4. CLASSIFY    (instant)")
+    print(f"    5. COOLDOWN    {COOLDOWN_SECONDS:.0f}s  (shows result)")
+    print(f"    -> repeat from step 1")
+    print()
 
-    # Start WebSocket server
     async with websockets.serve(ws_handler, WS_HOST, WS_PORT):
-        print(f"\n  ✓ WebSocket server running on ws://{WS_HOST}:{WS_PORT}")
-        print("  ✓ Waiting for webapp to connect...\n")
-
-        # Start serial reader
-        await serial_reader(port, raw_mode=args.raw, baud_rate=baud)
+        print(f"  [OK] WebSocket server on ws://{WS_HOST}:{WS_PORT}")
+        print(f"  [OK] Starting serial reader...\n")
+        await serial_reader(port, raw_mode=args.raw, baud_rate=args.baud)
 
 
 if __name__ == "__main__":
