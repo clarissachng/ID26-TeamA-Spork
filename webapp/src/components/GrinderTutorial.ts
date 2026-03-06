@@ -41,8 +41,8 @@ export class GrinderTutorial {
     full.draggable = false;
 
     this.handle = document.createElement('img');
-    // this.handle.src = '/assets/grinder_handle.png';
-    // this.handle.alt = 'Grinder handle';
+    this.handle.src = '/assets/grinder_handle.png';
+    this.handle.alt = 'Grinder handle';
     this.handle.className = 'grinder-layer grinder-handle';
     this.handle.draggable = false;
 

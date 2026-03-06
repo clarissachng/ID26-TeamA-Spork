@@ -1432,20 +1432,18 @@ p {
 /* ── Grinder Tutorial Animation ────────────────────────── */
 .grinder-tutorial {
   width: 100%;
-  background-color: #f5e6a3;
-  border-radius: var(--radius-lg);
-  padding: var(--space-lg);
-  transition: background-color 0.4s ease;
-  box-shadow: var(--shadow-soft);
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .grinder-tutorial.success {
-  background-color: #8faa6e;
+  background: transparent;
 }
 
 .grinder-tutorial.wrong {
-  background-color: #e8a0a0;
-  animation: grinder-flash 0.3s ease;
+  animation: shake 0.4s ease;
 }
 
 .grinder-wrapper {
@@ -1456,11 +1454,7 @@ p {
 }
 
 .grinder-instruction {
-  font-family: var(--font-display);
-  font-size: 1.1rem;
-  color: #3d2e1e;
-  margin: 0;
-  font-weight: 600;
+  display: none;
 }
 
 .grinder-container {
@@ -1494,10 +1488,10 @@ p {
 
 .grinder-handle {
   z-index: 3;
-  transform-origin: 95% 50%;
+  transform-origin: 5% 50%;
   transform-box: fill-box;
-  left: -45%;
-  transform: scaleX(-1);
+  left: auto;
+  right: -45%;
   /* top: 20%; */
 }
 
@@ -1527,13 +1521,13 @@ p {
 /* ── Keyframes ─────────────────────────────────────────── */
 @keyframes grindIdle {
   from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  to { transform: rotate(-360deg); }
 }
 
 @keyframes grindSuccess {
   0%   { transform: rotate(0deg); }
-  60%  { transform: rotate(580deg); }
-  100% { transform: rotate(720deg); }
+  60%  { transform: rotate(-580deg); }
+  100% { transform: rotate(-720deg); }
 }
 
 @keyframes shake {
@@ -1555,6 +1549,45 @@ p {
 @keyframes grinder-arrow-rotate {
   0%   { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+/* ── Grinder Tutorial Detail Page Overrides ─────────────── */
+#tutorial-detail:has(.grinder-tutorial) {
+  background-image: none;
+  background-color: #F5D76E;
+}
+
+#tutorial-detail:has(.grinder-tutorial) #td-emoji,
+#tutorial-detail:has(.grinder-tutorial) #td-prop {
+  display: none;
+}
+
+#tutorial-detail:has(.grinder-tutorial) #td-label {
+  font-family: var(--font-display);
+  font-size: 2.4rem;
+  font-style: italic;
+  color: #3d2e1e;
+  margin-bottom: var(--space-xs);
+}
+
+#tutorial-detail:has(.grinder-tutorial) #td-desc {
+  color: #5a4a3a;
+}
+
+#tutorial-detail:has(.grinder-tutorial) .grinder-hint-arrow {
+  display: none;
+}
+
+#tutorial-detail:has(.grinder-tutorial)::after {
+  content: '';
+  position: absolute;
+  bottom: 2.5rem;
+  left: 2.5rem;
+  width: 140px;
+  height: 90px;
+  background: url('/assets/motion_arrows/1.png') center / contain no-repeat;
+  z-index: 10;
+  pointer-events: none;
 }
 
 @keyframes stamp-pop {

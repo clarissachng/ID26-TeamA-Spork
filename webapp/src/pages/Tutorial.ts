@@ -11,7 +11,6 @@ const CORE_MOTIONS: { motion: MotionType; motionName: string; instruction: strin
   { motion: 'grinding', motionName: 'Circular',  instruction: 'Rotate in a circle' },
   { motion: 'pour',     motionName: 'Pour',       instruction: 'Tilt and pour downward' },
   { motion: 'whisk',    motionName: 'Whisk',      instruction: 'Whisk back and forth' },
-  { motion: 'scoop',    motionName: 'Scoop',      instruction: 'Scoop upward in an arc' },
 ];
 
 export function createTutorial(): HTMLElement {
