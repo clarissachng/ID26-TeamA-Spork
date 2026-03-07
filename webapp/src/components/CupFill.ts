@@ -36,14 +36,15 @@ export class CupFill {
   setFill(fraction: number): void {
     const clamped = Math.max(0, Math.min(1, fraction));
     const pct = Math.round(clamped * 100);
-    this.fillEl.style.height = `${pct}%`;
+    this.fillEl.style.transform = `scaleY(${clamped})`;
     this.labelEl.textContent = `${pct}%`;
     this.el.setAttribute('aria-valuenow', String(pct));
   }
 
   /** Get current fill fraction (0–1) */
   getFill(): number {
-    return parseInt(this.fillEl.style.height || '0', 10) / 100;
+    const match = this.fillEl.style.transform.match(/scaleY\(([\d.]+)\)/);
+    return match ? parseFloat(match[1]) : 0;
   }
 
   /** Animate a quick "splash" highlight */
@@ -52,7 +53,9 @@ export class CupFill {
     this.fillEl.style.filter = 'brightness(1.4)';
     requestAnimationFrame(() => {
       this.fillEl.style.transition = '';
-      this.fillEl.style.filter = '';
+      requestAnimationFrame(() => {
+        this.fillEl.style.filter = '';
+      });
     });
   }
 

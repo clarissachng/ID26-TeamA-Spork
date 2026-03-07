@@ -1,9 +1,17 @@
 /**
- * Tutorial page — grid of all available props/tools.
+ * Tutorial page — 4 core motions displayed as tools sitting on the table.
  * Tapping one opens the TutorialDetail screen for that motion.
  */
 import { router } from './router.ts';
-import { ALL_MOTIONS, MOTION_META } from '../types/motion.types.ts';
+import { MOTION_META } from '../types/motion.types.ts';
+import type { MotionType } from '../types/motion.types.ts';
+
+/** The 4 core motions to teach, in display order */
+const CORE_MOTIONS: { motion: MotionType; motionName: string; instruction: string }[] = [
+  { motion: 'grinding', motionName: 'Circular',  instruction: 'Rotate in a circle' },
+  { motion: 'pour',     motionName: 'Pour',       instruction: 'Tilt and pour downward' },
+  { motion: 'whisk',    motionName: 'Whisk',      instruction: 'Whisk back and forth' },
+];
 
 export function createTutorial(): HTMLElement {
   const page = document.createElement('div');
@@ -15,41 +23,44 @@ export function createTutorial(): HTMLElement {
       <span class="btn-icon btn-back-icon"></span>
       Back
     </button>
-    <div class="stack stack--xl" style="text-align: center; width: 100%; max-width: 720px;">
-      <div>
-        <h2>Learn Your Props</h2>
-        <p class="subtitle">Tap a prop to see how it works</p>
-      </div>
-      <div class="grid-3 stagger-children" id="prop-cards"></div>
+    <div class="tutorial-header">
+      <h2>Learn the Moves</h2>
+      <p class="subtitle">Pick up each tool and try the motion</p>
     </div>
+    <div class="tutorial-table-row stagger-children" id="tool-items"></div>
   `;
 
-  const grid = page.querySelector('#prop-cards')!;
+  const row = page.querySelector('#tool-items')!;
 
-  ALL_MOTIONS.forEach((motion) => {
+  CORE_MOTIONS.forEach(({ motion, motionName, instruction }) => {
     const meta = MOTION_META[motion];
-    const card = document.createElement('div');
-    card.className = 'card';
-    card.setAttribute('role', 'button');
-    card.setAttribute('tabindex', '0');
+    const item = document.createElement('div');
+    item.className = 'tutorial-tool-item';
+    item.setAttribute('role', 'button');
+    item.setAttribute('tabindex', '0');
+    item.setAttribute('title', 'Pick up and scan ↻');
 
-    card.innerHTML = `
-      <div class="card__emoji"><img class="card__asset" src="${meta.asset}" alt="${meta.label}" /></div>
-      <div class="card__title">${meta.prop}</div>
-      <div class="card__subtitle">${meta.label} — ${meta.description}</div>
+    item.innerHTML = `
+      <div class="tutorial-tool-placemat"></div>
+      <img class="tutorial-tool-img" src="${meta.asset}" alt="${meta.prop}" />
+      <div class="tutorial-tool-label">
+        <span class="tutorial-tool-motion">${motionName}</span>
+        <span class="tutorial-tool-instruction">${instruction}</span>
+      </div>
     `;
 
-    card.addEventListener('click', () => {
+    // TODO: replace click with NFC scan trigger
+    item.addEventListener('click', () => {
       router.go('tutorial-detail', { motion });
     });
-    card.addEventListener('keydown', (e) => {
+    item.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         router.go('tutorial-detail', { motion });
       }
     });
 
-    grid.appendChild(card);
+    row.appendChild(item);
   });
 
   page.querySelector('[data-action="back"]')!

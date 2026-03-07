@@ -18,7 +18,7 @@ export class GrinderTutorial {
   private container: HTMLElement;
   private handle: HTMLElement;
   private motionHandler: ((e: Event) => void) | null = null;
-  private expectedMotion: MotionType = 'circle';
+  private expectedMotion: MotionType = 'grinding';
 
   constructor(parent: HTMLElement) {
     this.el = document.createElement('div');
@@ -81,8 +81,8 @@ export class GrinderTutorial {
       }
     });
 
-    // Start with idle animation
-    this.startIdle();
+    // Start still — no animation until correct motion
+    this.handle.style.animation = 'none';
     document.addEventListener('motion-detected', this.motionHandler);
   }
 
@@ -94,36 +94,32 @@ export class GrinderTutorial {
     }
   }
 
-  /** Slow idle rotation animation */
-  private startIdle(): void {
-    this.el.classList.remove('success', 'wrong');
-    this.handle.style.animation = '';
-    void this.handle.offsetWidth; // force reflow
-    this.handle.style.animation = 'grindIdle 3s linear infinite';
-  }
-
-  /** Correct motion: fast spin + background change */
+  /** Correct motion: fast spin, then reset to still for the next round */
   private triggerSuccess(): void {
     this.el.classList.add('success');
+    this.handle.style.animation = '';
+    void this.handle.offsetWidth; // force reflow so re-trigger works
     this.handle.style.animation = 'grindSuccess 0.8s ease-out forwards';
-    document.removeEventListener('motion-detected', this.motionHandler!);
-    this.motionHandler = null;
+
+    // After the spin finishes, go back to still so it can animate again
+    this.handle.addEventListener('animationend', () => {
+      this.el.classList.remove('success');
+      this.handle.style.animation = 'none';
+    }, { once: true });
   }
 
   /** Wrong motion: shake + red flash */
   private triggerWrong(): void {
     this.el.classList.add('wrong');
-    this.el.style.animation = 'shake 0.4s ease';
 
     setTimeout(() => {
-      this.el.style.animation = '';
       this.el.classList.remove('wrong');
-    }, 400);
+    }, 500);
   }
 
-  /** Reset to idle state */
+  /** Reset to still state */
   reset(): void {
-    this.startIdle();
+    this.handle.style.animation = 'none';
     this.el.classList.remove('success', 'wrong');
   }
 

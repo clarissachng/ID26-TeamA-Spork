@@ -15,7 +15,21 @@ class Router {
   /** Navigate to a page by ID. Handles CSS transition classes. */
   go(pageId: PageId, meta?: Record<string, string>): void {
     const prev = this.currentPage;
-    if (prev === pageId) return;
+
+    // Same page with new meta — update data attrs and re-trigger active
+    if (prev === pageId) {
+      const el = document.getElementById(pageId);
+      if (el && meta) {
+        Object.entries(meta).forEach(([k, v]) => el.dataset[k] = v);
+        // Re-trigger the MutationObserver by toggling the active class
+        el.classList.remove('active');
+        requestAnimationFrame(() => {
+          el.style.display = 'block';
+          el.classList.add('active');
+        });
+      }
+      return;
+    }
 
     const performNav = () => {
       // Exit current page
