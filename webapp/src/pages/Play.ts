@@ -8,6 +8,7 @@
  */
 import { router } from './router.ts';
 import { LEVELS, MOTION_META, type MotionType, type GameLevel } from '../types/motion.types.ts';
+
 import { CupFill } from '../components/CupFill.ts';
 import { MotionPrompt } from '../components/MotionPrompt.ts';
 
@@ -101,6 +102,7 @@ function startLevel(page: HTMLElement): void {
   let completedCorrect = 0;
   let score = 0;
   let motionHandler: ((e: Event) => void) | null = null;
+  let keyHandler: ((e: KeyboardEvent) => void) | null = null;
 
   function updateVisualProgress(): void {
     dots.forEach((dot, i) => {
@@ -147,6 +149,10 @@ function startLevel(page: HTMLElement): void {
         document.removeEventListener('motion-detected', motionHandler);
         motionHandler = null;
       }
+      if (keyHandler) {
+        document.removeEventListener('keydown', keyHandler);
+        keyHandler = null;
+      }
       currentStep++;
       setTimeout(advance, 800);
     });
@@ -173,6 +179,10 @@ function startLevel(page: HTMLElement): void {
 
         document.removeEventListener('motion-detected', motionHandler!);
         motionHandler = null;
+        if (keyHandler) {
+          document.removeEventListener('keydown', keyHandler);
+          keyHandler = null;
+        }
         currentStep++;
         setTimeout(advance, 800);
       } else {
@@ -180,14 +190,34 @@ function startLevel(page: HTMLElement): void {
       }
     });
     document.addEventListener('motion-detected', motionHandler);
+
+    // Keyboard fallback (when Arduino is not connected)
+    keyHandler = (e: KeyboardEvent) => {
+      if (!page.classList.contains('active')) return;
+      if (!resultArea.classList.contains('hidden')) return;
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        // Simulate correct motion
+        const synth = new CustomEvent('motion-detected', {
+          detail: { motion: step.motion, confidence: 1 },
+        });
+        document.dispatchEvent(synth);
+      } else if (e.key.length === 1) {
+        // Any other printable key = wrong
+        flashWrongStamp();
+      }
+    };
+    document.addEventListener('keydown', keyHandler);
   }
 
   function finish(): void {
     prompt.destroy();
     if (motionHandler) document.removeEventListener('motion-detected', motionHandler);
+    if (keyHandler) { document.removeEventListener('keydown', keyHandler); keyHandler = null; }
 
     const pct = Math.round((score / level.steps.length) * 100);
     const passed = pct >= level.passingScore;
+    const nextLevel = LEVELS.find(l => l.id === level.id + 1);
 
     resultArea.classList.remove('hidden');
     resultArea.innerHTML = `
@@ -196,12 +226,19 @@ function startLevel(page: HTMLElement): void {
       <p>You scored <strong>${pct}%</strong></p>
       <div class="row" style="justify-content: center; gap: var(--space-md); margin-top: var(--space-md);">
         <button class="btn btn--ghost btn--small" data-action="retry">Retry</button>
+        ${nextLevel ? '<button class="btn btn--gold btn--small" data-action="next">Next Round</button>' : ''}
         <button class="btn btn--primary btn--small" data-action="menu">Back to Menu</button>
       </div>
     `;
 
     resultArea.querySelector('[data-action="retry"]')!
       .addEventListener('click', () => startLevel(page));
+    if (nextLevel) {
+      resultArea.querySelector('[data-action="next"]')!
+        .addEventListener('click', () => {
+          router.go('play', { levelId: String(nextLevel.id) });
+        });
+    }
     resultArea.querySelector('[data-action="menu"]')!
       .addEventListener('click', () => router.home());
   }

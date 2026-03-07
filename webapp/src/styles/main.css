@@ -453,7 +453,7 @@ p {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 0%;
+  height: 100%;
   background: linear-gradient(
     0deg,
     var(--accent-sage) 0%,
@@ -461,7 +461,9 @@ p {
     var(--accent-warm) 100%
   );
   border-radius: 0 0 22px 22px;
-  transition: height var(--duration-slow) var(--ease-out-soft);
+  transform-origin: bottom;
+  transform: scaleY(0);
+  transition: transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .cup__label {
@@ -567,6 +569,40 @@ p {
   top: var(--space-lg);
   left: var(--space-lg);
   z-index: 10;
+  background: var(--bg-surface);
+}
+
+.back-btn:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-secondary);
+  transform: translateY(-1px);
+}
+
+.back-btn:active {
+  transform: translateY(1px) scale(0.97);
+}
+
+.back-btn .btn-back-icon {
+  width: auto;
+  height: auto;
+  background: none;
+}
+
+.back-btn .btn-back-icon::before {
+  content: '\2190';
+  font-size: 1rem;
+  line-height: 1;
+}
+
+[data-theme="light"] .back-btn {
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-soft);
+}
+
+[data-theme="light"] .back-btn:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
 }
 
 /* ── Connection Status ─────────────────────────────────── */
@@ -1565,7 +1601,7 @@ p {
 #play .cup__fill {
   background: #5c3d2e;
   border-radius: 0 0 44px 44px;
-  transition: height 0.6s ease;
+  transition: transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 #play .cup__label {
