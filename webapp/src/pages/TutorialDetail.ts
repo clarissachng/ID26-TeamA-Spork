@@ -182,7 +182,12 @@ export function createTutorialDetail(): HTMLElement {
         if (!page.querySelector('#td-popup')!.classList.contains('hidden')) return;
         if (e.key === ' ' || e.key === 'Enter') {
           e.preventDefault();
-          if (!resolved) {
+          // Dispatch motion-detected so tutorial components (Grinder etc.) react
+          document.dispatchEvent(new CustomEvent('motion-detected', {
+            detail: { motion, confidence: 1 },
+          }));
+          // Only count here if no Arduino motionHandler (it would double-count)
+          if (!motionHandler && !resolved) {
             successCount++;
             updateCounter(page, successCount, REQUIRED_SUCCESSES);
             if (successCount >= REQUIRED_SUCCESSES) {
@@ -193,8 +198,11 @@ export function createTutorialDetail(): HTMLElement {
             }
           }
         } else if (e.key.length === 1) {
-          // Any printable key = wrong
-          onWrong(page);
+          // Any printable key = wrong — dispatch a mismatched motion
+          document.dispatchEvent(new CustomEvent('motion-detected', {
+            detail: { motion: 'unknown', confidence: 0 },
+          }));
+          if (!motionHandler) onWrong(page);
         }
       };
       document.addEventListener('keydown', keyHandler);
