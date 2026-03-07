@@ -7,8 +7,8 @@
 
 const BGM_TRACKS = [
   { label: 'Café Morning', src: '/assets/bgm/bgm01.mp3' },
-  { label: 'Rainy Kettle', src: '/assets/bgm/bgm02.mp3' },
-  { label: 'Matcha Hours', src: '/assets/bgm/bgm03.mp3' },
+  { label: 'Matcha Hours', src: '/assets/bgm/bgm02.mp3' },
+  { label: 'Rainy Kettle', src: '/assets/bgm/bgm03.mp3' },
 ];
 
 class BgmManager {

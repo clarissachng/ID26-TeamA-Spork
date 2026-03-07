@@ -32,28 +32,68 @@ function init(): void {
   app.appendChild(createTutorialDetail());
   app.appendChild(createChoreograph());
 
-  // 2. Global BGM picker (visible on all pages)
+  // 2. Global controls bar (visible on all pages)
+  const globalControls = document.createElement('div');
+  globalControls.id = 'global-controls';
+  globalControls.className = 'global-controls';
+
+  // ── Theme toggle ──
+  const savedThemeForBtn = localStorage.getItem('spork-theme') || 'dark';
+  const themeIsLight = savedThemeForBtn === 'light';
+  globalControls.innerHTML = `
+    <button class="global-controls__btn" id="global-theme-toggle" aria-label="Toggle light/dark theme">
+      <span class="global-controls__icon" id="global-theme-icon">${themeIsLight ? '\u{1F319}' : '\u{2600}\u{FE0F}'}</span>
+      <span class="global-controls__label" id="global-theme-label">${themeIsLight ? 'Dark' : 'Light'}</span>
+    </button>
+  `;
+
+  // ── BGM picker ──
   const bgmPicker = document.createElement('div');
   bgmPicker.id = 'global-bgm-picker';
   bgmPicker.className = 'global-bgm-picker';
   bgmPicker.innerHTML = `
-    <button class="global-bgm-picker__toggle" id="global-bgm-toggle" aria-label="Background music">
-      <span class="global-bgm-picker__note">♪</span>
-      <span class="global-bgm-picker__label">Music</span>
+    <button class="global-controls__btn" id="global-bgm-toggle" aria-label="Background music">
+      <span class="global-controls__icon">♪</span>
+      <span class="global-controls__label">Music</span>
     </button>
     <div class="global-bgm-picker__panel hidden" id="global-bgm-panel">
       <div class="global-bgm-picker__panel-title">Background Music</div>
       <p class="global-bgm-picker__hint">Tap a track to play — tap again to pause</p>
       <ul class="global-bgm-picker__track-list" id="global-bgm-track-list"></ul>
       <div class="global-bgm-picker__volume-row">
-        <span class="global-bgm-picker__vol-icon">🔈</span>
+        <span class="global-bgm-picker__vol-icon">\u{1F508}</span>
         <input type="range" class="global-bgm-picker__volume" id="global-bgm-volume"
                min="0" max="1" step="0.05" value="0.4" />
-        <span class="global-bgm-picker__vol-icon">🔊</span>
+        <span class="global-bgm-picker__vol-icon">\u{1F50A}</span>
       </div>
     </div>
   `;
-  document.body.appendChild(bgmPicker);
+  globalControls.appendChild(bgmPicker);
+  document.body.appendChild(globalControls);
+
+  // ── Theme toggle logic ──
+  const themeToggleBtn = globalControls.querySelector('#global-theme-toggle') as HTMLButtonElement;
+  const themeIcon = globalControls.querySelector('#global-theme-icon') as HTMLElement;
+  const themeLabel = globalControls.querySelector('#global-theme-label') as HTMLElement;
+
+  function updateThemeButton(): void {
+    const theme = document.documentElement.getAttribute('data-theme') || 'dark';
+    if (theme === 'light') {
+      themeIcon.textContent = '\u{1F319}';
+      themeLabel.textContent = 'Dark';
+    } else {
+      themeIcon.textContent = '\u{2600}\u{FE0F}';
+      themeLabel.textContent = 'Light';
+    }
+  }
+
+  themeToggleBtn.addEventListener('click', () => {
+    const current = document.documentElement.getAttribute('data-theme') || 'dark';
+    const next = current === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('spork-theme', next);
+    updateThemeButton();
+  });
 
   // Build track list
   const trackList = bgmPicker.querySelector('#global-bgm-track-list') as HTMLUListElement;

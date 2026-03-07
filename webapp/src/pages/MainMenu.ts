@@ -39,13 +39,6 @@ export function createMainMenu(): HTMLElement {
           </div>
         </div>
 
-        <!-- ── Top-right controls: Theme toggle ── -->
-        <div class="top-right-controls">
-          <button class="theme-toggle" id="theme-toggle" aria-label="Toggle light/dark theme">
-            <span class="theme-toggle__icon" id="theme-icon">☀️</span>
-            <span id="theme-label">Light</span>
-          </button>
-        </div>
       </header>
 
       <!-- ── Illustration sitting on warm wooden table ── -->
@@ -131,38 +124,6 @@ export function createMainMenu(): HTMLElement {
 
   document.addEventListener('ws-status', updateStatus);
   updateStatus();
-
-  // ═══════════════════════════════════════════════════════
-  //  Theme Toggle
-  // ═══════════════════════════════════════════════════════
-  const themeToggleBtn = page.querySelector('#theme-toggle') as HTMLButtonElement;
-  const themeIcon = page.querySelector('#theme-icon') as HTMLElement;
-  const themeLabel = page.querySelector('#theme-label') as HTMLElement;
-
-  function getCurrentTheme(): string {
-    return document.documentElement.getAttribute('data-theme') || 'dark';
-  }
-
-  function updateThemeButton(): void {
-    const theme = getCurrentTheme();
-    if (theme === 'light') {
-      themeIcon.textContent = '\u{1F319}';
-      themeLabel.textContent = 'Dark';
-    } else {
-      themeIcon.textContent = '\u{2600}\u{FE0F}';
-      themeLabel.textContent = 'Light';
-    }
-  }
-
-  themeToggleBtn.addEventListener('click', () => {
-    const current = getCurrentTheme();
-    const next = current === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', next);
-    localStorage.setItem('spork-theme', next);
-    updateThemeButton();
-  });
-
-  updateThemeButton();
 
   return page;
 }
