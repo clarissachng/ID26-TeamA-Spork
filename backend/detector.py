@@ -22,7 +22,7 @@ import time
 
 import numpy as np
 import pandas as pd
-from scipy.signal import butter, filtfilt
+from scipy.signal import butter, filtfilt, find_peaks
 
 # -- Constants ---------------------------------------------
 SAMPLE_RATE = 25            # Hz
@@ -46,6 +46,10 @@ TEABAG_RHYTHM_LOW_HZ = 1.5
 TEABAG_RHYTHM_HIGH_HZ = 3.5
 TEABAG_RHYTHM_RATIO = 0.30
 ACTIVE_MAGNITUDE_MULTIPLIER = 2.0
+UP_DOWN_MIN_PEAK = 200.0
+UP_DOWN_MAX_PEAKS = 3
+CV_THRESHOLD = 0.5
+UP_DOWN_AXIS_RATIO = 0.7
 
 
 # -- Low-pass filter ---------------------------------------
@@ -89,9 +93,21 @@ def extract_features(x: np.ndarray, y: np.ndarray, z: np.ndarray) -> dict:
     mag_mean = float(mag.mean())
     mag_std = float(mag.std())
 
-    # Dominant axis
-    stds = {"x": float(x.std()), "y": float(y.std()), "z": float(z.std())}
-    dominant_axis = max(stds, key=stds.get)
+    # Dominant axis (active samples only)
+    active_mask = mag > mag.mean()
+    if np.sum(active_mask) > 5:
+        x_active = x[active_mask]
+        y_active = y[active_mask]
+        z_active = z[active_mask]
+    else:
+        x_active, y_active, z_active = x, y, z
+
+    axis_stds = {
+        'x': float(np.std(x_active)),
+        'y': float(np.std(y_active)),
+        'z': float(np.std(z_active))
+    }
+    dominant_axis = max(axis_stds, key=axis_stds.get)
 
     return {
         "zc_x": zc_x,
@@ -103,6 +119,10 @@ def extract_features(x: np.ndarray, y: np.ndarray, z: np.ndarray) -> dict:
         "dc_z": dc_z,
         "mag_mean": round(mag_mean, 2),
         "mag_std": round(mag_std, 2),
+        "mag_max": round(float(np.max(mag)), 2),
+        "x_std": round(axis_stds['x'], 2),
+        "y_std": round(axis_stds['y'], 2),
+        "z_std": round(axis_stds['z'], 2),
         "dominant_axis": dominant_axis,
     }
 
@@ -137,6 +157,10 @@ def has_rhythmic_content(magnitude: np.ndarray, sample_rate: int = 25) -> bool:
 # -- Rule-based classifier --------------------------------
 def classify(features: dict, magnitude: np.ndarray | None = None,
              noise_floor: float = 15.0) -> tuple[str | None, float]:
+    if magnitude is not None and len(magnitude) > 0:
+        # Reject if signal never significantly exceeds noise
+        if float(np.max(magnitude)) < noise_floor * 5.0:
+            return (None, 0.0)
     if features["mag_mean"] < NO_MOTION_THRESHOLD:
         return (None, 0.0)
     if magnitude is None or len(magnitude) == 0:
@@ -147,17 +171,23 @@ def classify(features: dict, magnitude: np.ndarray | None = None,
         if duration >= TEABAG_MIN_ACTIVE_DURATION:
             # confidence = hardcoded 0.9 — detection is binary, rhythm either present or not
             return ("teabag", 0.9)
-    # Then check rest vs active start
-    if not starts_from_rest(magnitude, noise_floor):
-        # confidence = signal strength relative to expected range
-        conf = min(1.0, features["mag_mean"] / CIRCULAR_MAG_CONFIDENCE_SCALE)
-        return ("circular", conf)
-    # Short burst from rest = up_down
-    duration = active_duration(magnitude, noise_floor)
-    if duration < UP_DOWN_MAX_DURATION:
-        # confidence = how short and sharp the burst was
-        return ("up_down", min(1.0, duration / UP_DOWN_MAX_DURATION))
-    return ("circular", 0.5)
+    # Check up_down — requires peaks, high CV, high peak, dominant axis z
+    cv = features['mag_std'] / (features['mag_mean'] + 0.1)
+    peaks, _ = find_peaks(magnitude, height=noise_floor * 3.0, distance=SAMPLE_RATE // 2)
+    if (1 <= len(peaks) <= UP_DOWN_MAX_PEAKS
+            and features['mag_max'] > UP_DOWN_MIN_PEAK
+            and cv > CV_THRESHOLD
+            and features['z_std'] >= features['y_std'] * UP_DOWN_AXIS_RATIO
+            and features['z_std'] >= features['x_std'] * UP_DOWN_AXIS_RATIO):
+        peak_conf = min(1.0, features['mag_max'] / 500.0)
+        return ('up_down', round(peak_conf, 2))
+    # Circular fallback — should only occur on horizontal axes
+    if features['dominant_axis'] == 'z':
+        return (None, 0.0)
+    active_fraction = float(np.sum(magnitude > noise_floor)) / len(magnitude)
+    active_conf = min(1.0, active_fraction / 0.7)
+    mag_conf = min(1.0, features['mag_mean'] / 100.0)
+    return ('circular', round((active_conf + mag_conf) / 2.0, 2))
 
 
 # -- Detector state machine --------------------------------
@@ -290,6 +320,11 @@ class Detector:
         self._noise_floor = min(NOISE_FLOOR_MAX, max(NOISE_FLOOR_MIN, float(mags.mean() + 3.0 * mags.std())))
         print(f"    baseline: x={self._baseline_x:.1f} y={self._baseline_y:.1f} z={self._baseline_z:.1f}")
         print(f"    noise floor: {self._noise_floor:.1f} uT")
+        if self._noise_floor >= 45.0:
+            print("  [!] WARNING: High noise floor \u2014 move magnet away during calibration")
+        if self._noise_floor >= 45.0:
+            self._noise_floor = 15.0
+            print("  [!] Resetting noise floor to 15.0 \u2014 ignoring saturated baseline")
         self._cal_buffer = []
         self._enter_state(self.COUNTDOWN)
 
@@ -363,8 +398,8 @@ def run_test():
     print(f"\n  Found {len(csv_files)} CSV files in {data_dir}\n")
     noise_floor = 15.0
     print(f"  {'File':<30} {'Detected':<12} {'Conf':>6}  "
-          f"{'rest':>5} {'dur':>5} {'rhythm':>7} {'mag_m':>6}")
-    print("  " + "-" * 75)
+          f"{'rest':>5} {'dur':>5} {'rhythm':>7} {'mag_m':>6} {'mag_x':>7} {'dom':>4} {'x_std':>6} {'y_std':>6} {'z_std':>6}")
+    print("  " + "-" * 107)
 
     for path in csv_files:
         filename = os.path.basename(path)
@@ -415,7 +450,8 @@ def run_test():
         rest_str = "Y" if from_rest else "N"
         rhythm_str = "Y" if has_rhythm else "N"
         print(f"  {filename:<30} {det_str:<12} {conf:>5.0%}  "
-              f"{rest_str:>5} {dur:>5.1f} {rhythm_str:>7} {feat['mag_mean']:>6.1f}")
+              f"{rest_str:>5} {dur:>5.1f} {rhythm_str:>7} {feat['mag_mean']:>6.1f} {feat['mag_max']:>7.1f}"
+              f" {feat['dominant_axis']:>4} {feat['x_std']:>6.1f} {feat['y_std']:>6.1f} {feat['z_std']:>6.1f}")
 
     print()
 
