@@ -1,5 +1,5 @@
 /**
- * Tutorial page — 4 core motions displayed as tools sitting on the table.
+ * Tutorial page — 3 core motions displayed as tools sitting on the table.
  * Tapping one opens the TutorialDetail screen for that motion.
  */
 import { router } from './router.ts';
@@ -9,8 +9,8 @@ import type { MotionType } from '../types/motion.types.ts';
 /** The 4 core motions to teach, in display order */
 const CORE_MOTIONS: { motion: MotionType; motionName: string; instruction: string }[] = [
   { motion: 'grinding', motionName: 'Circular',  instruction: 'Rotate in a circle' },
-  { motion: 'pour',     motionName: 'Pour',       instruction: 'Tilt and pour downward' },
-  { motion: 'whisk',    motionName: 'Whisk',      instruction: 'Whisk back and forth' },
+  { motion: 'up_down',     motionName: 'Dip',        instruction: 'Dip up and down rhythmically' },
+  { motion: 'press_down',    motionName: 'Press',      instruction: 'Press firmly downward' },
 ];
 
 export function createTutorial(): HTMLElement {
