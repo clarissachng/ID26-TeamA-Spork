@@ -1,0 +1,213 @@
+/* ── Play Page — game rounds with kitchen background ── */
+#play {
+  background-image: url('/assets/bg.PNG');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+
+#play::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(12, 10, 8, 0.12) 0%,
+    rgba(12, 10, 8, 0.16) 45%,
+    rgba(12, 10, 8, 0.28) 100%
+  );
+  pointer-events: none;
+}
+
+.play-round {
+  position: relative;
+  z-index: 1;
+  width: min(900px, 100%);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: clamp(5.5rem, 10vh, 7rem);
+  margin:0 auto;
+}
+
+#play-title {
+  text-align: center;
+  color: #fff8eb;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+}
+
+.play-progress-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: var(--space-sm);
+}
+
+.play-progress-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.28);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.16);
+  transition: transform 180ms var(--ease-spring), background var(--duration-mid);
+}
+
+.play-progress-dot.is-complete {
+  background: #fff6df;
+  transform: scale(1.1);
+}
+
+.play-stamps {
+  margin-top: var(--space-md);
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(0.5rem, 1.8vw, 0.95rem);
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.play-stamp {
+  width: clamp(92px, 13vw, 112px);
+  aspect-ratio: 0.84;
+  padding: 8px;
+  border-radius: 14px;
+  border: 3px dashed rgba(222, 222, 222, 0.88);
+  background: rgba(248, 246, 240, 0.9);
+  box-shadow: 0 7px 18px rgba(0, 0, 0, 0.2);
+  transition:
+    border-color var(--duration-mid) var(--ease-out-soft),
+    transform var(--duration-fast) var(--ease-spring),
+    box-shadow var(--duration-mid) var(--ease-out-soft);
+}
+
+.play-stamp:nth-child(1) { transform: rotate(-12deg) translateY(18px); }
+.play-stamp:nth-child(2) { transform: rotate(-5deg) translateY(-8px); }
+.play-stamp:nth-child(3) { transform: rotate(3deg) translateY(2px); }
+.play-stamp:nth-child(4) { transform: rotate(-3deg) translateY(-6px); }
+.play-stamp:nth-child(5) { transform: rotate(8deg) translateY(12px); }
+.play-stamp:nth-child(6) { transform: rotate(-7deg) translateY(-4px); }
+.play-stamp:nth-child(7) { transform: rotate(11deg) translateY(14px); }
+
+.play-stamp__inner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  background: var(--stamp-color, #8a8a8a);
+  filter: grayscale(100%) brightness(0.6);
+  transition: filter var(--duration-mid), transform 220ms var(--ease-spring);
+}
+
+.play-stamp__asset {
+  width: 72%;
+  height: 72%;
+  object-fit: contain;
+  user-select: none;
+  pointer-events: none;
+}
+
+.stamp-1 { --stamp-color: #8faa6e; }  /* olive green */
+.stamp-2 { --stamp-color: #c94040; }  /* deep red */
+.stamp-3 { --stamp-color: #e8c84a; }  /* warm yellow */
+.stamp-4 { --stamp-color: #7da4b8; }  /* sky blue */
+.stamp-5 { --stamp-color: #d4a574; }  /* warm tan */
+.stamp-6 { --stamp-color: #c47d7d; }  /* rose */
+.stamp-7 { --stamp-color: #b87333; }  /* rust */
+
+.play-stamp.is-active {
+  border-color: rgba(255, 248, 233, 0.98);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24), 0 0 0 1px rgba(255, 248, 233, 0.24);
+}
+
+.play-stamp.is-active .play-stamp__inner {
+  filter: grayscale(0%) brightness(1);
+}
+
+.play-stamp.pop .play-stamp__inner {
+  animation: stamp-pop 0.3s ease;
+}
+
+.play-stamp.is-wrong {
+  border-color: #d16060;
+  animation: stamp-shake 0.3s ease;
+}
+
+.play-arrow-wrap {
+  margin-top: 2em;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  min-height: 80px;
+}
+
+.play-arrow {
+  width: clamp(60px, 10vw, 100px);
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.25));
+}
+
+.play-cup-wrap {
+  margin-top: 1em;
+  padding-bottom: clamp(0.4rem, 2vh, 1.25rem);
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+#play .cup {
+  width: clamp(180px, 22vw, 240px);
+  height: clamp(250px, 34vh, 330px);
+  border-radius: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+#play .cup::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url('/assets/glass_temp.webp');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  z-index: 2;
+  pointer-events: none;
+}
+
+#play .cup__fill {
+  background: #5c3d2e;
+  border-radius: 0;
+  transition: transform 1.4s cubic-bezier(0.22, 0.61, 0.36, 1), filter 0.3s ease;
+  z-index: 1;
+  clip-path: polygon(15% 0%, 84% 0%, 78% 100%, 22% 100%);
+}
+
+#play .cup__label {
+  bottom: 10px;
+  color: #fff8eb;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  z-index: 3;
+}
+
+.play-result-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(22, 18, 15, 0.66);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(3px);
+}

@@ -1,0 +1,144 @@
+/* ── Reset & Base ──────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--bg-deep);
+  color: var(--text-primary);
+  min-height: 100dvh;
+  overflow: hidden;
+  /* Subtle paper-like texture — swap with image easily */
+  background-image: url('');
+  background-size: cover;
+}
+
+/* ── App Container ─────────────────────────────────────── */
+#app {
+  position: relative;
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  background-color: var(--bg-deep);
+}
+
+/* ── Page Containers ───────────────────────────────────── */
+.page {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-lg);
+  opacity: 0;
+  transform: translateY(16px) scale(0.98);
+  transition:
+    opacity var(--duration-page) var(--ease-out-soft),
+    transform var(--duration-page) var(--ease-out-soft);
+  pointer-events: none;
+  will-change: opacity, transform;
+}
+
+.page.active {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.page.exit {
+  opacity: 0;
+  transform: translateY(-12px) scale(0.97);
+  pointer-events: none;
+}
+
+/* ── Global page slide transitions for main menu handoff ── */
+.slide-out-down {
+  transform: translateY(120vh);
+  opacity: 0;
+  transition:
+    transform 0.5s ease-in,
+    opacity 0.3s ease-in;
+}
+
+.slide-in-from-top {
+  animation: slideInTop 0.5s ease-out forwards;
+}
+
+@keyframes slideInTop {
+  from {
+    transform: translateY(-100vh);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.slide-out-up-page {
+  animation: slideOutUp 0.5s ease-in forwards;
+}
+
+@keyframes slideOutUp {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-120vh);
+    opacity: 0;
+  }
+}
+
+.slide-in-from-bottom {
+  animation: slideInBottom 0.5s ease-out forwards;
+}
+
+@keyframes slideInBottom {
+  from {
+    transform: translateY(120vh);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Typography */
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--accent-cream);
+}
+
+h1 { font-size: 2.8rem; letter-spacing: -0.02em; }
+h2 { font-size: 1.8rem; }
+h3 { font-size: 1.3rem; }
+
+p {
+  font-family: var(--font-body);
+  color: var(--text-secondary);
+  line-height: 1.6;
+  max-width: 42ch;
+}
+
+.subtitle {
+  font-size: 1.05rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-top: var(--space-xs);
+}

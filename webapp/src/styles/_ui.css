@@ -1,0 +1,346 @@
+/* ── Buttons — feel like physical objects ──────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-xl);
+  border: none;
+  border-radius: var(--radius-md);
+  font-family: var(--font-handwritten);
+  font-size: 1.15rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--bg-deep);
+  /* background: var(--accent-warm); */
+  box-shadow: var(--shadow-soft), inset 0 1px 0 rgba(255,255,255,0.15);
+  transition:
+    transform var(--duration-fast) var(--ease-spring),
+    box-shadow var(--duration-fast) var(--ease-out-soft),
+    background var(--duration-mid) var(--ease-out-soft);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.btn:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: var(--shadow-lifted), var(--glow-warm);
+}
+
+.btn:active {
+  transform: translateY(1px) scale(0.98);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+/* Button variants */
+.btn--primary   { color: var(--accent-warm); }
+.btn--sage      { color: var(--accent-sage); }
+.btn--rose      { color: var(--accent-rose); }
+.btn--sky       { background: var(--accent-sky);   color: var(--bg-deep); }
+.btn--gold      { background: var(--accent-gold);  color: var(--bg-deep); }
+.btn--ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  box-shadow: none;
+  border: 2px solid var(--bg-card-hover);
+}
+.btn--ghost:hover {
+  background: var(--bg-card);
+  color: var(--accent-cream);
+  box-shadow: none;
+}
+
+.btn--small {
+  padding: var(--space-sm) var(--space-md);
+  font-size: 0.95rem;
+}
+
+.btn--large {
+  padding: var(--space-lg) var(--space-2xl);
+  font-size: 1.3rem;
+  border-radius: var(--radius-lg);
+}
+
+/* Icon slot inside buttons — swap background-image later */
+.btn-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  background-color: rgba(0,0,0,0.15);
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  flex-shrink: 0;
+}
+
+/* ── Cards — round select, prop select ─────────────────── */
+.card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-soft);
+  transition:
+    transform var(--duration-fast) var(--ease-spring),
+    box-shadow var(--duration-fast) var(--ease-out-soft),
+    background var(--duration-mid) var(--ease-out-soft);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1.5px solid rgba(245, 230, 208, 0.06);
+  pointer-events: none;
+}
+
+.card:hover {
+  background: var(--bg-card-hover);
+  transform: translateY(-3px) scale(1.01);
+  box-shadow: var(--shadow-lifted);
+}
+
+.card:active {
+  transform: translateY(0) scale(0.99);
+}
+
+.card__emoji {
+  font-size: 2.2rem;
+  margin-bottom: var(--space-sm);
+}
+
+.card__asset {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+}
+
+.card__title {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  color: var(--accent-cream);
+  margin-bottom: var(--space-xs);
+}
+
+.card__subtitle {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+/* ── Grid layouts ──────────────────────────────────────── */
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-lg);
+  width: 100%;
+  max-width: 720px;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+  margin: auto;
+  margin-top: var(--space-2xl);
+}
+
+.stack--lg { gap: var(--space-lg); }
+.stack--xl { gap: var(--space-xl); }
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+/* ── Cup Fill Component ────────────────────────────────── */
+.cup {
+  position: relative;
+  width: 120px;
+  height: 160px;
+  border-radius: 12px 12px 24px 24px;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+  /* Swap with illustrated cup image */
+  /* background-image: url('/assets/cup.png'); */
+  background-size: contain;
+  background-repeat: no-repeat;
+}
+
+.cup__fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  background: linear-gradient(
+    0deg,
+    var(--accent-sage) 0%,
+    var(--accent-gold) 50%,
+    var(--accent-warm) 100%
+  );
+  border-radius: 0 0 22px 22px;
+  transform-origin: bottom;
+  transform: scaleY(0);
+  transition: transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.cup__label {
+  position: absolute;
+  bottom: var(--space-sm);
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--bg-deep);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  z-index: 1;
+}
+
+/* ── Motion Prompt Component ───────────────────────────── */
+.motion-prompt {
+  text-align: center;
+  padding: var(--space-lg);
+  animation: prompt-enter var(--duration-mid) var(--ease-spring) both;
+}
+
+.motion-prompt__emoji {
+  font-size: 3.5rem;
+  margin-bottom: var(--space-sm);
+  animation: gentle-bounce 2s ease-in-out infinite;
+}
+
+.motion-prompt__asset {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+}
+
+.tutorial-detail__asset {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+}
+
+.ch-pill-asset {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+.ch-live-feed-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ch-live-feed-asset {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+}
+
+.motion-prompt__label {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  color: var(--accent-cream);
+  margin-bottom: var(--space-xs);
+}
+
+.motion-prompt__desc {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+.motion-prompt__timer {
+  margin-top: var(--space-md);
+  font-family: var(--font-mono);
+  font-size: 2rem;
+  color: var(--accent-gold);
+}
+
+/* ── Feedback flash ────────────────────────────────────── */
+.feedback-flash {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  opacity: 0;
+}
+
+.feedback-flash.success {
+  background: radial-gradient(circle at center, rgba(143,170,123,0.25) 0%, transparent 70%);
+  animation: flash-in 500ms var(--ease-out-soft);
+}
+
+.feedback-flash.fail {
+  background: radial-gradient(circle at center, rgba(196,125,125,0.2) 0%, transparent 70%);
+  animation: flash-in 500ms var(--ease-out-soft);
+}
+
+/* ── Back Button (persistent) ──────────────────────────── */
+.back-btn {
+  position: absolute;
+  top: var(--space-lg);
+  left: var(--space-lg);
+  z-index: 10;
+  background: var(--bg-surface);
+}
+
+.back-btn:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-secondary);
+  transform: translateY(-1px);
+}
+
+.back-btn:active {
+  transform: translateY(1px) scale(0.97);
+}
+
+.back-btn .btn-back-icon {
+  width: auto;
+  height: auto;
+  background: none;
+}
+
+.back-btn .btn-back-icon::before {
+  content: '\2190';
+  font-size: 1rem;
+  line-height: 1;
+}
+
+/* ── Connection Status ─────────────────────────────────── */
+.connection-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent-rust);
+  display: inline-block;
+  margin-right: var(--space-xs);
+  transition: background var(--duration-mid);
+}
+
+.connection-dot.connected {
+  background: var(--accent-sage);
+  box-shadow: 0 0 8px var(--accent-sage);
+}

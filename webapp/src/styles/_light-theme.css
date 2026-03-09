@@ -1,0 +1,190 @@
+/* ═══════════════════════════════════════════════════════════
+   LIGHT THEME — component overrides
+   ═══════════════════════════════════════════════════════════ */
+
+/* Subtle paper texture overlay on body */
+[data-theme="light"] body {
+  background-color: var(--bg-deep);
+  color: var(--text-primary);
+}
+
+[data-theme="light"] body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px;
+}
+
+/* Headings use deep brown in light mode */
+[data-theme="light"] h1,
+[data-theme="light"] h2,
+[data-theme="light"] h3 {
+  color: var(--text-primary);
+}
+
+/* Cards get warm sandy background with subtle brown border */
+[data-theme="light"] .card::before {
+  border-color: rgba(61, 46, 30, 0.08);
+}
+
+[data-theme="light"] .card__title {
+  color: var(--text-primary);
+}
+
+/* BGM picker & Music toggle — warm brown pill in light mode */
+[data-theme="light"] .bgm-picker__toggle {
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-soft);
+}
+
+[data-theme="light"] .bgm-picker__toggle:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+}
+
+[data-theme="light"] .bgm-picker__panel {
+  background: var(--bg-card);
+  box-shadow: var(--shadow-lifted);
+}
+
+[data-theme="light"] .bgm-picker__panel::before {
+  border-color: rgba(61, 46, 30, 0.08);
+}
+
+[data-theme="light"] .bgm-picker__panel-title {
+  color: var(--text-primary);
+}
+
+[data-theme="light"] .bgm-picker__track:hover {
+  background: var(--bg-card-hover);
+}
+
+[data-theme="light"] .bgm-picker__track.active {
+  background: rgba(122, 158, 126, 0.15);
+}
+
+[data-theme="light"] .bgm-picker__volume {
+  background: var(--bg-surface);
+}
+
+[data-theme="light"] .bgm-picker__volume::-webkit-slider-thumb {
+  background: var(--accent-warm);
+  box-shadow: 0 1px 4px rgba(61, 46, 30, 0.2);
+}
+
+[data-theme="light"] .bgm-picker__volume-row {
+  border-top-color: rgba(61, 46, 30, 0.08);
+}
+
+/* Arduino status btn in light mode */
+[data-theme="light"] .arduino-status-btn {
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-soft);
+}
+
+[data-theme="light"] .arduino-status-btn:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+}
+
+[data-theme="light"] .arduino-status-btn__dot.dot--connecting {
+  background: var(--accent-warm);
+  box-shadow: 0 0 6px var(--accent-warm);
+}
+
+/* Menu buttons in light mode — faint warm bg tint on hover */
+[data-theme="light"] #main-menu .btn--primary { color: var(--accent-warm); }
+[data-theme="light"] #main-menu .btn--sage    { color: var(--accent-sage); }
+[data-theme="light"] #main-menu .btn--rose    { color: var(--accent-rose); }
+
+[data-theme="light"] #main-menu .btn--primary:hover,
+[data-theme="light"] #main-menu .btn--sage:hover,
+[data-theme="light"] #main-menu .btn--rose:hover {
+  background: rgba(61, 46, 30, 0.06);
+}
+
+/* Ghost buttons (back, etc.) in light mode */
+[data-theme="light"] .btn--ghost {
+  border-color: rgba(61, 46, 30, 0.12);
+  color: var(--text-secondary);
+}
+
+[data-theme="light"] .btn--ghost:hover {
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+/* Illustration drop shadow — lighter in light mode */
+[data-theme="light"] .menu-illustration__img {
+  filter: drop-shadow(0 -4px 20px rgba(61, 46, 30, 0.15));
+}
+
+/* Scrollbar in light mode */
+[data-theme="light"] .page-scroll::-webkit-scrollbar-thumb {
+  background: var(--bg-card-hover);
+}
+
+/* Smooth transition between themes */
+body,
+.page,
+.btn,
+.card,
+.bgm-picker__toggle,
+.bgm-picker__panel,
+.arduino-status-btn,
+.global-controls__btn,
+.global-bgm-picker__panel,
+.td-popup__card {
+  transition-property: background-color, color, box-shadow, border-color;
+  transition-duration: var(--duration-mid);
+  transition-timing-function: var(--ease-out-soft);
+}
+
+/* ── Light theme: Tutorial Popup ──────────────────────── */
+[data-theme="light"] .td-popup {
+  background: rgba(240, 232, 216, 0.55);
+}
+
+[data-theme="light"] .td-popup__card {
+  background: var(--bg-card);
+  box-shadow: 0 8px 32px rgba(61, 46, 30, 0.18);
+}
+
+[data-theme="light"] .td-popup__title {
+  color: var(--accent-sage);
+}
+
+[data-theme="light"] .td-popup__text {
+  color: var(--text-secondary);
+}
+
+/* ── Light theme: Global BGM panel ────────────────────── */
+[data-theme="light"] .global-bgm-picker__panel {
+  background: var(--bg-card);
+  border-color: rgba(61, 46, 30, 0.12);
+  box-shadow: 0 8px 32px rgba(61, 46, 30, 0.15);
+}
+
+[data-theme="light"] .global-bgm-picker__track:hover {
+  background: rgba(61, 46, 30, 0.06);
+}
+
+[data-theme="light"] .global-bgm-picker__track.active {
+  background: rgba(122, 158, 126, 0.15);
+}
+
+[data-theme="light"] .global-bgm-picker__volume-row {
+  border-top-color: rgba(61, 46, 30, 0.08);
+}
+
+/* ── Light theme: Tutorial Counter ────────────────────── */
+[data-theme="light"] .td-counter {
+  color: var(--text-primary);
+}

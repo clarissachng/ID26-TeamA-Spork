@@ -1,0 +1,701 @@
+/* ── Grinder Tutorial Animation ────────────────────────── */
+.grinder-tutorial {
+  width: 100%;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.grinder-tutorial.success {
+  background: transparent;
+}
+
+.grinder-tutorial.wrong {
+  animation: shake 0.5s ease;
+  background-color: rgba(220, 50, 50, 0.25);
+  border-radius: 12px;
+  transition: background-color 0.3s ease;
+}
+
+.grinder-tutorial:not(.wrong) {
+  background-color: transparent;
+  transition: background-color 0.3s ease;
+}
+
+.grinder-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.grinder-instruction {
+  display: none;
+}
+
+.grinder-container {
+    position: relative;
+    width: clamp(200px, 50vw, 400px);
+    height: clamp(210px, 52.5vw, 420px);
+    margin: 5em 0;
+}
+
+.grinder-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  draggable: false;
+}
+
+.grinder-body {
+    z-index: 1;
+    width: 80%;
+    margin: auto;
+}
+
+.grinder-full {
+  z-index: 2;
+}
+
+.grinder-full.hidden {
+  display: none;
+}
+
+.grinder-handle {
+    z-index: 3;
+    transform-origin: 5% 50%;
+    transform-box: fill-box;
+    left: auto;
+    right: -45%;
+    top: -10%;
+}
+
+.grinder-hint-arrow {
+  width: 60px;
+  height: 60px;
+  margin-top: var(--space-md);
+  border: 3px solid rgba(61, 46, 30, 0.3);
+  border-radius: 50%;
+  position: relative;
+  animation: grinder-circle-pulse 2s ease-in-out infinite;
+}
+
+.grinder-hint-arrow::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 0 solid transparent;
+  border-bottom: 12px solid rgba(61, 46, 30, 0.4);
+  top: 8px;
+  right: 8px;
+  animation: grinder-arrow-rotate 2s linear infinite;
+}
+
+/* ── Grinder Keyframes ─────────────────────────────────── */
+@keyframes grindIdle {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(-360deg); }
+}
+
+@keyframes grindSuccess {
+  0%   { transform: rotate(0deg); }
+  60%  { transform: rotate(-580deg); }
+  100% { transform: rotate(-720deg); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25%      { transform: translateX(-8px); }
+  75%      { transform: translateX(8px); }
+}
+
+@keyframes grinder-flash {
+  0%   { background-color: #e8a0a0; }
+  100% { background-color: #f5e6a3; }
+}
+
+@keyframes grinder-circle-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50%      { opacity: 0.6; transform: scale(1.1); }
+}
+
+@keyframes grinder-arrow-rotate {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ── Grinder Tutorial Detail Page Overrides ─────────────── */
+#tutorial-detail:has(.grinder-tutorial) {
+  background-image: none;
+  background-color: #F5D76E;
+}
+
+#tutorial-detail:has(.grinder-tutorial) #td-emoji,
+#tutorial-detail:has(.grinder-tutorial) #td-prop {
+  display: none;
+}
+
+#tutorial-detail:has(.grinder-tutorial) #td-label {
+  font-family: var(--font-display);
+  font-size: 2.4rem;
+  font-style: italic;
+  color: #3d2e1e;
+  margin-bottom: var(--space-xs);
+}
+
+#tutorial-detail:has(.grinder-tutorial) #td-desc {
+  color: #5a4a3a;
+}
+
+#tutorial-detail:has(.grinder-tutorial) .grinder-hint-arrow {
+  display: none;
+}
+
+#tutorial-detail:has(.grinder-tutorial)::after {
+  content: '';
+  position: absolute;
+  bottom: 2.5rem;
+  left: 2.5rem;
+  width: 140px;
+  height: 90px;
+  background: url('/assets/motion_arrows/1.png') center / contain no-repeat;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* ── Dip Tutorial Animation (Teabag) ───────────────────── */
+.dip-tutorial {
+  width: 100%;
+  background: transparent;
+  padding: 0;
+}
+
+.dip-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.dip-scene {
+  position: relative;
+  width: clamp(240px, 55vw, 420px);
+  height: clamp(260px, 58vw, 440px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dip-layer {
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.dip-teabag {
+  width: 55%;
+  animation: dipIdle 1.6s ease-in-out infinite;
+}
+
+.dip-hint-arrow {
+  width: 100px;
+  height: 100px;
+  object-fit: contain;
+  margin-top: var(--space-sm);
+  opacity: 0.6;
+}
+
+.dip-tutorial.wrong {
+  animation: shake 0.4s ease;
+}
+
+@keyframes dipIdle {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-24px); }
+}
+
+@keyframes dipSuccess {
+  0%   { transform: translateY(0); }
+  20%  { transform: translateY(-30px); }
+  40%  { transform: translateY(10px); }
+  60%  { transform: translateY(-20px); }
+  80%  { transform: translateY(5px); }
+  100% { transform: translateY(0); }
+}
+
+/* Dip Tutorial Detail Page Overrides */
+#tutorial-detail:has(.dip-tutorial) {
+  background-image: none;
+  background-color: #A8D8EA;
+}
+
+#tutorial-detail:has(.dip-tutorial) #td-emoji,
+#tutorial-detail:has(.dip-tutorial) #td-prop {
+  display: none;
+}
+
+#tutorial-detail:has(.dip-tutorial) #td-label {
+  font-family: var(--font-display);
+  font-size: 2.4rem;
+  font-style: italic;
+  color: #2a4a5a;
+  margin-bottom: var(--space-xs);
+}
+
+#tutorial-detail:has(.dip-tutorial) #td-desc {
+  color: #3a5a6a;
+}
+
+#tutorial-detail:has(.dip-tutorial)::after {
+  content: '';
+  position: absolute;
+  bottom: 2.5rem;
+  left: 2.5rem;
+  width: 140px;
+  height: 90px;
+  background: url('/assets/motion_arrows/3.png') center / contain no-repeat;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* ── Press Tutorial Animation (French Press) ───────────── */
+.press-tutorial {
+  width: 100%;
+  background: transparent;
+  padding: 0;
+}
+
+.press-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.press-scene {
+  position: relative;
+  width: clamp(240px, 55vw, 420px);
+  height: clamp(260px, 58vw, 440px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.press-layer {
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.press-plunger {
+  width: 55%;
+  animation: pressIdle 2s ease-in-out infinite;
+}
+
+.press-hint-arrow {
+  width: 100px;
+  height: 100px;
+  object-fit: contain;
+  margin-top: var(--space-sm);
+  opacity: 0.6;
+}
+
+.press-tutorial.wrong {
+  animation: shake 0.4s ease;
+}
+
+@keyframes pressIdle {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(14px); }
+}
+
+@keyframes pressSuccess {
+  0%   { transform: translateY(0); }
+  60%  { transform: translateY(30px); }
+  100% { transform: translateY(30px); }
+}
+
+/* Press Tutorial Detail Page Overrides */
+#tutorial-detail:has(.press-tutorial) {
+  background-image: none;
+  background-color: #C5D8A4;
+}
+
+#tutorial-detail:has(.press-tutorial) #td-emoji,
+#tutorial-detail:has(.press-tutorial) #td-prop {
+  display: none;
+}
+
+#tutorial-detail:has(.press-tutorial) #td-label {
+  font-family: var(--font-display);
+  font-size: 2.4rem;
+  font-style: italic;
+  color: #3a4a2a;
+  margin-bottom: var(--space-xs);
+}
+
+#tutorial-detail:has(.press-tutorial) #td-desc {
+  color: #4a5a3a;
+}
+
+#tutorial-detail:has(.press-tutorial)::after {
+  content: '';
+  position: absolute;
+  bottom: 2.5rem;
+  left: 2.5rem;
+  width: 140px;
+  height: 90px;
+  background: url('/assets/motion_arrows/1.png') center / contain no-repeat;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* ── Tutorial Detail: radial flash overlay ─────────────── */
+.td-counter {
+  position: absolute;
+  top: 4.5rem;
+  right: 2rem;
+  font-family: var(--font-display);
+  font-size: 2rem;
+  color: var(--bg-deep);
+  z-index: 10;
+  letter-spacing: 0.05em;
+}
+
+.td-flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  opacity: 0;
+  border-radius: 50%;
+  transform: scale(0);
+}
+
+.td-flash--success {
+  background: radial-gradient(circle at center, rgba(100, 200, 80, 0.85) 0%, rgba(100, 200, 80, 0) 75%);
+  animation: td-radial-pop 0.65s ease-out forwards;
+}
+
+.td-flash--wrong {
+  background: radial-gradient(circle at center, rgba(220, 60, 60, 0.8) 0%, rgba(220, 60, 60, 0) 75%);
+  animation: td-radial-pop 0.65s ease-out forwards;
+}
+
+@keyframes td-radial-pop {
+  0%   { opacity: 1; transform: scale(0); border-radius: 50%; }
+  50%  { opacity: 1; transform: scale(1.4); border-radius: 0; }
+  100% { opacity: 0; transform: scale(1.5); border-radius: 0; }
+}
+
+/* ── Tutorial Detail: success popup ────────────────────── */
+.td-popup {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(22, 18, 15, 0.5);
+  backdrop-filter: blur(4px);
+  animation: td-popup-fade-in 0.3s ease-out;
+}
+
+.td-popup.hidden {
+  display: none;
+}
+
+.td-popup__card {
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl) var(--space-2xl);
+  box-shadow: var(--shadow-lifted);
+  text-align: center;
+  max-width: 35em;
+  width: 90%;
+  animation: td-popup-scale-in 0.35s var(--ease-spring);
+}
+
+.td-popup__title {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  color: var(--accent-sage);
+  margin-bottom: var(--space-sm);
+}
+
+.td-popup__text {
+  color: var(--text-secondary);
+  margin-bottom: var(--space-lg);
+}
+
+.td-popup__actions {
+  display: flex;
+  gap: var(--space-md);
+  justify-content: center;
+}
+
+@keyframes td-popup-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes td-popup-scale-in {
+  from { opacity: 0; transform: scale(0.85) translateY(12px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ── Tutorial Detail: slide-out-left transition ────────── */
+.td-slide-out-left {
+  animation: td-slide-left 0.45s ease-in forwards;
+  pointer-events: none;
+}
+
+@keyframes td-slide-left {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(-100%); }
+}
+
+/* ── Shared Keyframes ──────────────────────────────────── */
+@keyframes stamp-pop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+@keyframes stamp-shake {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  50% { transform: translateX(5px); }
+  75% { transform: translateX(-4px); }
+  100% { transform: translateX(0); }
+}
+
+@keyframes prompt-enter {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes gentle-bounce {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+
+@keyframes flash-in {
+  0%   { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Stagger children for nice enter effect */
+.stagger-children > * {
+  opacity: 0;
+  animation: fade-in-up var(--duration-mid) var(--ease-out-soft) both;
+}
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 80ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 160ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 240ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 320ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 400ms; }
+.stagger-children > *:nth-child(7) { animation-delay: 480ms; }
+
+/* ── Tutorial — "items on the table" layout ───────────── */
+#tutorial.page {
+  justify-content: flex-end;
+  padding-bottom: 14%;
+  background-color: #7e7f96;
+}
+
+.tutorial-header {
+  position: absolute;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.tutorial-header .subtitle {
+  margin-top: var(--space-xs);
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+}
+
+.tutorial-table-row {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 40px;
+    width: 100%;
+    padding: 0 var(--space-xl);
+    bottom: 10%;
+    position: absolute;
+}
+
+.tutorial-tool-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.tutorial-tool-item:hover,
+.tutorial-tool-item:focus-visible {
+  filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.3));
+  outline: none;
+}
+
+.tutorial-tool-item:hover .tutorial-tool-placemat,
+.tutorial-tool-item:focus-visible .tutorial-tool-placemat {
+  opacity: 1;
+}
+
+.tutorial-tool-placemat {
+  position: absolute;
+  top: -16px;
+  bottom: -16px;
+  left: -24px;
+  right: -24px;
+  background: rgba(245, 230, 163, 0.3);
+  border-radius: 12px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.tutorial-tool-img {
+    position: relative;
+    z-index: 1;
+    height: 25em;
+    width: auto;
+    max-width: 20em;
+    object-fit: contain;
+    display: block;
+}
+
+.tutorial-tool-label {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  margin-top: var(--space-sm);
+  text-align: center;
+}
+
+.tutorial-tool-motion {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: var(--accent-warm);
+}
+
+.tutorial-tool-instruction {
+  font-size: 1.25rem;
+  color: var(--accent-cream);
+}
+
+@media (max-width: 600px) {
+  #tutorial.page {
+    padding-bottom: 10%;
+  }
+
+  .tutorial-table-row {
+    gap: 16px;
+    padding: 0 var(--space-md);
+  }
+
+  .tutorial-tool-img {
+    height: 130px;
+    max-width: 100px;
+  }
+
+  .tutorial-tool-motion {
+    font-size: 0.85rem;
+  }
+
+  .tutorial-tool-instruction {
+    font-size: 0.7rem;
+  }
+}
+
+/* ── Responsive ────────────────────────────────────────── */
+@media (max-width: 480px) {
+  h1 { font-size: 2rem; }
+  h2 { font-size: 1.4rem; }
+
+  .btn--large {
+    padding: var(--space-md) var(--space-lg);
+    font-size: 1.1rem;
+  }
+
+  .grid-3 {
+    grid-template-columns: 1fr;
+    max-width: 320px;
+  }
+
+  .cup {
+    width: 90px;
+    height: 120px;
+  }
+}
+
+/* ── Scrollable page content ───────────────────────────── */
+.page-scroll {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  max-height: 100%;
+  width: 100%;
+}
+
+/* Custom scrollbar — subtle */
+.page-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.page-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.page-scroll::-webkit-scrollbar-thumb {
+  background: var(--bg-card-hover);
+  border-radius: var(--radius-pill);
+}
+
+/* ── Utility ───────────────────────────────────────────── */
+.hidden { display: none !important; }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  border: 0;
+}
