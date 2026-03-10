@@ -14,8 +14,17 @@ import { createTutorialDetail } from './pages/TutorialDetail.ts';
 import { createChoreograph } from './pages/Choreograph.ts';
 import { motionDetector } from './components/MotionDetector.ts';
 import { bgm } from './modules/bgm.ts';
+import { joystick } from './modules/joystick.ts';
 
 function init(): void {
+    function setJoystickFocus(el: HTMLElement): void {
+      document.querySelectorAll('.joystick-focus').forEach(e => {
+        e.classList.remove('joystick-focus');
+        (e as HTMLElement).style.transform = '';
+      });
+      el.focus();
+      el.classList.add('joystick-focus');
+    }
   // Apply saved theme (default: dark)
   const savedTheme = localStorage.getItem('spork-theme') || 'dark';
   document.documentElement.setAttribute('data-theme', savedTheme);
@@ -157,6 +166,59 @@ function init(): void {
 
   // 4. Connect WebSocket to Python backend
   motionDetector.connect();
+
+    // 6. Wire up joystick navigation
+    joystick.onDirection = (dir) => {
+      const focusable = Array.from(
+        document.querySelectorAll('button:not([disabled]), [tabindex="0"]')
+      ).filter((el) => {
+        const rect = (el as HTMLElement).getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+      }) as HTMLElement[];
+
+      const current = document.activeElement as HTMLElement;
+      let idx = focusable.indexOf(current);
+      if (idx === -1) idx = 0;
+
+      let next: HTMLElement | undefined;
+      if (dir === 'down' || dir === 'right') next = focusable[idx + 1] ?? focusable[0];
+      if (dir === 'up' || dir === 'left') next = focusable[idx - 1] ?? focusable[focusable.length - 1];
+
+      if (next) {
+        setJoystickFocus(next);
+      }
+    };
+
+    joystick.onClick = () => {
+      const focused = document.activeElement as HTMLElement;
+      focused?.click();
+    };
+
+    joystick.onToolScanned = (tool) => {
+      console.log('[NFC] Tool scanned:', tool);
+      document.dispatchEvent(new CustomEvent('tool-scanned', { detail: { tool } }));
+    };
+
+    // Add a connect joystick button to global controls
+    const joystickBtn = document.createElement('button');
+    joystickBtn.className = 'global-controls__btn';
+    joystickBtn.id = 'btn-connect-joystick';
+    joystickBtn.innerHTML = '<span class="global-controls__icon">🕹️</span><span class="global-controls__label">Joystick</span>';
+    joystickBtn.addEventListener('click', async () => {
+      try {
+        await joystick.connect();
+        joystickBtn.querySelector('.global-controls__label')!.textContent = 'Connected';
+        joystickBtn.style.opacity = '0.5';
+        // Set default focus to play button after short delay (let page settle)
+        setTimeout(() => {
+          const playBtn = document.querySelector('[data-page="play"], #btn-play, .btn-play, button[id*="play"]') as HTMLElement;
+          if (playBtn) setJoystickFocus(playBtn);
+        }, 300);
+      } catch (e) {
+        console.error('[JOY] Connection failed:', e);
+      }
+    });
+    globalControls.appendChild(joystickBtn);
 
   // 5. Debug logging
   document.addEventListener('motion-detected', ((e: CustomEvent) => {
