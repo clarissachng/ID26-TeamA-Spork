@@ -11,12 +11,10 @@
 import { router } from './router.ts';
 import { MOTION_META, type MotionType } from '../types/motion.types.ts';
 import { GrinderTutorial } from '../components/GrinderTutorial.ts';
-import { PourTutorial } from '../components/PourTutorial.ts';
-import { WhiskTutorial } from '../components/WhiskTutorial.ts';
 import { serial } from '../modules/serial.ts';
 
 /** Tutorial order — matches the cards on the Tutorial page */
-const TUTORIAL_ORDER: MotionType[] = ['grinding', 'pour', 'whisk'];
+const TUTORIAL_ORDER: MotionType[] = ['grinding', 'up_down', 'press_down'];
 
 export function createTutorialDetail(): HTMLElement {
   const page = document.createElement('div');
@@ -116,8 +114,6 @@ export function createTutorialDetail(): HTMLElement {
   let motionHandler: ((e: Event) => void) | null = null;
   let keyHandler: ((e: KeyboardEvent) => void) | null = null;
   let grinder: GrinderTutorial | null = null;
-  let pourTut: PourTutorial | null = null;
-  let whiskTut: WhiskTutorial | null = null;
   let resolved = false; // whether the round already succeeded
   let successCount = 0;  // number of successful motions (need 2 to pass)
   const REQUIRED_SUCCESSES = 2;
@@ -130,7 +126,7 @@ export function createTutorialDetail(): HTMLElement {
       hidePopup(page);
       updateCounter(page, 0, REQUIRED_SUCCESSES);
 
-      const motion = (page.dataset.motion ?? 'stir') as MotionType;
+      const motion = (page.dataset.motion ?? 'grinding') as MotionType;
       setupDetail(page, motion);
 
       // Clean previous tutorial component HTML
@@ -141,16 +137,6 @@ export function createTutorialDetail(): HTMLElement {
       if (motion === 'grinding') {
         grinder = new GrinderTutorial(container);
         grinder.start();
-        (page.querySelector('#td-demo') as HTMLElement).style.display = 'none';
-        (page.querySelector('#td-feedback') as HTMLElement).style.display = 'none';
-      } else if (motion === 'pour') {
-        pourTut = new PourTutorial(container);
-        pourTut.start();
-        (page.querySelector('#td-demo') as HTMLElement).style.display = 'none';
-        (page.querySelector('#td-feedback') as HTMLElement).style.display = 'none';
-      } else if (motion === 'whisk') {
-        whiskTut = new WhiskTutorial(container);
-        whiskTut.start();
         (page.querySelector('#td-demo') as HTMLElement).style.display = 'none';
         (page.querySelector('#td-feedback') as HTMLElement).style.display = 'none';
       } else {

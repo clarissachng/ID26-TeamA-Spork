@@ -170,7 +170,7 @@ def classify(features: dict, magnitude: np.ndarray | None = None,
         duration = active_duration(magnitude, noise_floor)
         if duration >= TEABAG_MIN_ACTIVE_DURATION:
             # confidence = hardcoded 0.9 — detection is binary, rhythm either present or not
-            return ("teabag", 0.9)
+            return ("up_down", 0.9)  # frontend expects 'up_down' for teabag
     # Check up_down — requires peaks, high CV, high peak, dominant axis z
     cv = features['mag_std'] / (features['mag_mean'] + 0.1)
     peaks, _ = find_peaks(magnitude, height=noise_floor * 3.0, distance=SAMPLE_RATE // 2)
@@ -180,14 +180,14 @@ def classify(features: dict, magnitude: np.ndarray | None = None,
             and features['z_std'] >= features['y_std'] * UP_DOWN_AXIS_RATIO
             and features['z_std'] >= features['x_std'] * UP_DOWN_AXIS_RATIO):
         peak_conf = min(1.0, features['mag_max'] / 500.0)
-        return ('up_down', round(peak_conf, 2))
+        return ('press_down', round(peak_conf, 2))  # frontend expects 'press_down' for up_down
     # Circular fallback — should only occur on horizontal axes
     if features['dominant_axis'] == 'z':
         return (None, 0.0)
     active_fraction = float(np.sum(magnitude > noise_floor)) / len(magnitude)
     active_conf = min(1.0, active_fraction / 0.7)
     mag_conf = min(1.0, features['mag_mean'] / 100.0)
-    return ('circular', round((active_conf + mag_conf) / 2.0, 2))
+    return ('grinding', round((active_conf + mag_conf) / 2.0, 2))  # frontend expects 'grinding' for circular
 
 
 # -- Detector state machine --------------------------------
