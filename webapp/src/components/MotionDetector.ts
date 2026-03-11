@@ -49,12 +49,32 @@ class MotionDetectorWS {
 
       this.ws.onmessage = (ev: MessageEvent) => {
         try {
-          const msg: MotionDetectionMessage = JSON.parse(ev.data);
+          const msg = JSON.parse(ev.data);
+
+          // Forward real-time sensor + backend phase state
+          if (msg.sensor) {
+            document.dispatchEvent(
+              new CustomEvent('sensor-data', {
+                detail: {
+                  x: msg.x as number,
+                  y: msg.y as number,
+                  z: msg.z as number,
+                  mag: msg.mag as number,
+                  state: msg.state as string,
+                  phaseRemaining: msg.phase_remaining as number,
+                  noiseFloor: msg.noise_floor as number,
+                },
+              }),
+            );
+          }
+
+          // Detection event
           if (msg.detected) {
-            this.listeners.forEach(cb => cb(msg.motion, msg.confidence));
+            const det = msg as MotionDetectionMessage;
+            this.listeners.forEach(cb => cb(det.motion, det.confidence));
             document.dispatchEvent(
               new CustomEvent('motion-detected', {
-                detail: { motion: msg.motion, confidence: msg.confidence },
+                detail: { motion: det.motion, confidence: det.confidence },
               }),
             );
           }

@@ -1,0 +1,409 @@
+/* ── Global Controls Bar (visible on all pages) ───────── */
+.global-controls {
+  position: fixed;
+  top: 1.2rem;
+  right: 1.2rem;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.global-controls__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow: var(--shadow-soft);
+  transition:
+    background var(--duration-mid) var(--ease-out-soft),
+    transform var(--duration-fast) var(--ease-spring),
+    color var(--duration-mid);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.global-controls__btn:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-secondary);
+  transform: translateY(-1px);
+}
+
+.global-controls__btn:active {
+  transform: translateY(1px) scale(0.97);
+}
+
+.global-controls__icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.global-controls__label {
+  font-size: 0.85rem;
+}
+
+/* Global BGM Picker */
+.global-bgm-picker {
+  position: relative;
+}
+
+.global-bgm-picker__panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 240px;
+  background: var(--bg-card);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lifted);
+  padding: var(--space-md);
+  backdrop-filter: blur(12px);
+  animation: td-popup-scale-in 0.25s var(--ease-spring);
+}
+
+.global-bgm-picker__panel.hidden {
+  display: none;
+}
+
+.global-bgm-picker__panel-title {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  text-align: center;
+  margin-bottom: var(--space-xs);
+  color: var(--text-primary);
+}
+
+.global-bgm-picker__hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: center;
+  margin-bottom: var(--space-sm);
+}
+
+.global-bgm-picker__track-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--space-sm) 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.global-bgm-picker__track {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--duration-fast);
+}
+
+.global-bgm-picker__track:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.global-bgm-picker__track.active {
+  background: rgba(143, 170, 123, 0.18);
+}
+
+.global-bgm-picker__track.active .global-bgm-picker__track-name {
+  color: var(--accent-sage);
+}
+
+.global-bgm-picker__track-icon {
+  font-size: 1.1rem;
+  width: 1.4em;
+  text-align: center;
+}
+
+.global-bgm-picker__track-name {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+}
+
+.global-bgm-picker__volume-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: var(--space-xs);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.global-bgm-picker__vol-icon {
+  font-size: 0.85rem;
+}
+
+.global-bgm-picker__volume {
+  flex: 1;
+  accent-color: var(--accent-sage);
+}
+
+/* ── BGM Picker (top-right floating — main menu only, legacy) ── */
+.bgm-picker {
+  position: relative;
+  z-index: 20;
+}
+
+.bgm-picker__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow-soft);
+  transition:
+    background var(--duration-mid) var(--ease-out-soft),
+    transform var(--duration-fast) var(--ease-spring),
+    color var(--duration-mid);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bgm-picker__toggle:hover {
+  background: var(--bg-card-hover);
+  color: var(--accent-cream);
+  transform: translateY(-1px);
+}
+
+.bgm-picker__toggle:active {
+  transform: translateY(1px) scale(0.97);
+}
+
+.bgm-picker__note {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.bgm-picker__panel {
+  position: absolute;
+  top: calc(100% + var(--space-sm));
+  right: 0;
+  width: 240px;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  box-shadow: var(--shadow-lifted);
+  animation: bgm-panel-enter var(--duration-mid) var(--ease-spring) both;
+  z-index: 25;
+}
+
+.bgm-picker__panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1.5px solid rgba(245, 230, 208, 0.06);
+  pointer-events: none;
+}
+
+.bgm-picker__panel.hidden {
+  display: none;
+}
+
+.bgm-picker__panel-title {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--accent-cream);
+  margin-bottom: var(--space-sm);
+  text-align: center;
+}
+
+.bgm-picker__track-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-md);
+}
+
+.bgm-picker__track {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition:
+    background var(--duration-fast),
+    transform var(--duration-fast) var(--ease-spring);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bgm-picker__track:hover {
+  background: var(--bg-card-hover);
+  transform: translateX(2px);
+}
+
+.bgm-picker__track:active {
+  transform: scale(0.98);
+}
+
+.bgm-picker__track.active {
+  background: rgba(143, 170, 123, 0.15);
+}
+
+.bgm-picker__track.active .bgm-picker__track-name {
+  color: var(--accent-sage);
+}
+
+.bgm-picker__track-icon {
+  font-size: 1rem;
+  width: 22px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.bgm-picker__track-name {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  transition: color var(--duration-mid);
+}
+
+.bgm-picker__volume-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding-top: var(--space-sm);
+  border-top: 1px solid rgba(245, 230, 208, 0.06);
+}
+
+.bgm-picker__vol-icon {
+  font-size: 0.85rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.bgm-picker__volume {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-surface);
+  outline: none;
+  cursor: pointer;
+}
+
+.bgm-picker__volume::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent-warm);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-spring);
+}
+
+.bgm-picker__volume::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.bgm-picker__volume::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent-warm);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  cursor: pointer;
+}
+
+@keyframes bgm-panel-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-15px) scale(0.95) !important;
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ── Arduino Connection Button (bottom-left) ───────────── */
+.arduino-status-btn {
+  position: absolute;
+  bottom: var(--space-lg);
+  left: var(--space-lg);
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--bg-card);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  box-shadow: var(--shadow-soft);
+  transition:
+    background var(--duration-mid) var(--ease-out-soft),
+    transform var(--duration-fast) var(--ease-spring),
+    color var(--duration-mid);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.arduino-status-btn:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-secondary);
+  transform: translateY(-1px);
+}
+
+.arduino-status-btn:active {
+  transform: translateY(1px) scale(0.97);
+}
+
+.arduino-status-btn__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition:
+    background var(--duration-mid),
+    box-shadow var(--duration-mid);
+}
+
+.arduino-status-btn__dot.dot--connecting {
+  background: var(--accent-gold);
+  box-shadow: 0 0 6px var(--accent-gold);
+  animation: dot-pulse 1.5s ease-in-out infinite;
+}
+
+.arduino-status-btn__dot.dot--connected {
+  background: var(--accent-sage);
+  box-shadow: 0 0 8px var(--accent-sage);
+}
+
+.arduino-status-btn__dot.dot--disconnected {
+  background: var(--accent-rose);
+  box-shadow: none;
+}
+
+.arduino-status-btn__label {
+  line-height: 1;
+}
+
+@keyframes dot-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}

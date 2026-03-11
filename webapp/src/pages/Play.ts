@@ -7,7 +7,7 @@
  *  - Step progress indicator
  */
 import { router } from './router.ts';
-import { LEVELS, MOTION_META, type MotionType, type GameLevel } from '../types/motion.types.ts';
+import { LEVELS, MOTION_META, ALL_MOTIONS, type MotionType, type GameLevel } from '../types/motion.types.ts';
 
 import { CupFill } from '../components/CupFill.ts';
 import { MotionPrompt } from '../components/MotionPrompt.ts';
@@ -27,6 +27,7 @@ export function createPlayPage(): HTMLElement {
       <div id="play-progress" class="play-progress-dots"></div>
       <div id="play-stamps" class="play-stamps"></div>
       <div id="play-prompt-area" class="sr-only"></div>
+      <div id="play-arrow-area" class="play-arrow-wrap"></div>
       <div id="play-cup-area" class="play-cup-wrap"></div>
       <div id="play-result" class="hidden stack play-result-overlay" style="text-align: center;"></div>
     </div>
@@ -58,6 +59,7 @@ function startLevel(page: HTMLElement): void {
   const progressEl = page.querySelector('#play-progress') as HTMLElement;
   const stampsEl = page.querySelector('#play-stamps') as HTMLElement;
   const promptArea = page.querySelector('#play-prompt-area') as HTMLElement;
+  const arrowArea = page.querySelector('#play-arrow-area') as HTMLElement;
   const cupArea = page.querySelector('#play-cup-area') as HTMLElement;
   const resultArea = page.querySelector('#play-result') as HTMLElement;
 
@@ -66,6 +68,7 @@ function startLevel(page: HTMLElement): void {
   progressEl.innerHTML = '';
   stampsEl.innerHTML = '';
   promptArea.innerHTML = '';
+  arrowArea.innerHTML = '';
   cupArea.innerHTML = '';
   resultArea.innerHTML = '';
   resultArea.classList.add('hidden');
@@ -80,9 +83,9 @@ function startLevel(page: HTMLElement): void {
   });
 
   const stamps: HTMLElement[] = Array.from({ length: VISUAL_STAMP_COUNT }, (_, i) => {
-    const motion = level.steps[i]?.motion;
-    const assetSrc = motion ? MOTION_META[motion].asset : '';
-    const assetAlt = motion ? MOTION_META[motion].label : `Stamp ${i + 1}`;
+    const randomMotion = ALL_MOTIONS[Math.floor(Math.random() * ALL_MOTIONS.length)];
+    const assetSrc = MOTION_META[randomMotion].asset;
+    const assetAlt = MOTION_META[randomMotion].label;
     const stamp = document.createElement('div');
     stamp.className = `play-stamp ${stampVisualClasses[i]}`;
     stamp.title = `Stamp ${i + 1}`;
@@ -141,6 +144,12 @@ function startLevel(page: HTMLElement): void {
     const step = level.steps[currentStep];
 
     prompt.show(step.motion);
+
+    // Show a random motion arrow for this step
+    const randomArrowMotion = ALL_MOTIONS[Math.floor(Math.random() * ALL_MOTIONS.length)];
+    const arrowSrc = MOTION_META[randomArrowMotion].arrow;
+    arrowArea.innerHTML = `<img class="play-arrow" src="${arrowSrc}" alt="${MOTION_META[randomArrowMotion].label} motion" />`;
+
     prompt.startTimer(step.duration, () => {
       // Timer expired — fail this step
       prompt.markFail();

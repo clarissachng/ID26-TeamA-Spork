@@ -2,44 +2,95 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Magnetometer Pro - Motion Analysis</title>
+    <title>Motion Recorder — DTW Template Builder</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <h1>Motion Dashboard</h1>
-        
-        <div class="controls">
-    <button id="btnConnect">🔌 Connect Arduino</button>
-    <button id="btnRecord" disabled>Start Recording</button>
-    <button id="btnNewSession">New Session</button>
-    
-    <button id="btnTare">Zero Sensor</button>
-    
-    <div class="slider-group">
-        <label>Sensitivity</label>
-        <input type="range" id="rangeScale" min="0.5" max="10.0" step="0.1" value="2.5">
-        <span id="scaleDisplay">2.5x</span>
-    </div>
-</div>
+        <h1>Motion Recorder</h1>
+        <p class="subtitle">Record clean training templates for DTW classification</p>
 
+        <!-- Connection -->
+        <div class="connection-bar">
+            <button id="btnConnect">Connect Arduino</button>
+            <span id="connStatus" class="conn-status">Disconnected</span>
+            <span id="sampleRate" class="sample-rate"></span>
+            <span id="liveMag" class="live-mag">— µT</span>
+        </div>
+
+        <!-- Always-visible live chart -->
         <canvas id="magChart"></canvas>
 
-        <div class="visualiser-area">
-            <div class="circle-container">
-                <div class="axis-label">Y-Axis</div>
-                <div class="compass-circle">
-                    <div id="magnetPointer1" class="pointer blue-dot"></div>
-                    <div id="magnetPointer2" class="pointer red-dot" style="display:none;"></div>
-                    <div class="center-dot"></div>
-                </div>
-                <div class="axis-label">X-Axis</div>
+        <!-- Motion Grid -->
+        <h2 id="motionGridHeader">Select Motion to Record</h2>
+        <div id="motionGrid" class="motion-grid">
+            <!-- Populated by JS -->
+        </div>
+
+        <!-- Recording Panel (hidden until motion selected) -->
+        <div id="recordPanel" class="record-panel hidden">
+            <div class="record-header">
+                <h2>Recording: <span id="currentMotionName"></span></h2>
+                <span id="recordingCount" class="recording-count">0 / 5 recorded</span>
             </div>
-            <div class="motion-stats">
-                <h3>System Status</h3>
-                <div id="magnetCount" class="stat-small">Waiting for data...</div>
-                <div id="headingVal" class="stat-big">0°</div>
+
+            <!-- Phase indicator -->
+            <div id="phaseIndicator" class="phase-indicator">
+                <div class="phase" id="phase1">
+                    <div class="phase-label">1. HOLD STILL</div>
+                    <div class="phase-time">2s baseline</div>
+                </div>
+                <div class="phase" id="phase2">
+                    <div class="phase-label">2. DO MOTION</div>
+                    <div class="phase-time">3-5s gesture</div>
+                </div>
+                <div class="phase" id="phase3">
+                    <div class="phase-label">3. HOLD STILL</div>
+                    <div class="phase-time">1s tail</div>
+                </div>
+            </div>
+
+            <!-- Big status overlay -->
+            <div id="overlay" class="overlay hidden">
+                <div id="overlayText" class="overlay-text"></div>
+                <div id="overlaySubtext" class="overlay-subtext"></div>
+            </div>
+
+            <!-- Progress bar -->
+            <div id="timerBar" class="timer-bar hidden">
+                <div id="timerFill" class="timer-fill"></div>
+                <span id="timerLabel" class="timer-label"></span>
+            </div>
+
+            <!-- Recording stats -->
+            <div class="live-stats">
+                <div class="stat-box">
+                    <div class="stat-label">Samples</div>
+                    <div id="liveSamples" class="stat-value">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Phase</div>
+                    <div id="livePhase" class="stat-value">--</div>
+                </div>
+            </div>
+
+            <!-- Record button -->
+            <div class="record-actions">
+                <button id="btnRecord" class="btn-record" disabled>Start Recording</button>
+                <button id="btnBack" class="btn-back">Back to motions</button>
+            </div>
+        </div>
+
+        <!-- Session Summary -->
+        <div id="sessionSummary" class="session-summary">
+            <h2>Session Summary</h2>
+            <div id="summaryGrid" class="summary-grid">
+                <!-- Populated by JS -->
+            </div>
+            <div class="summary-actions">
+                <button id="btnDownloadAll" class="btn-download" disabled>Download All CSVs</button>
+                <button id="btnReset" class="btn-reset">Reset Session</button>
             </div>
         </div>
     </div>
