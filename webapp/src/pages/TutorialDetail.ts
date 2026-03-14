@@ -420,6 +420,6 @@ function handleNext(page: HTMLElement): void {
     }, 450);
   } else {
     // Last tutorial — go to gameplay
-    router.go('level-select');
+    router.go('play', { levelId: '1' });
   }
 }

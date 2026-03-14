@@ -683,7 +683,7 @@
 .tutorial-header .subtitle {
   margin-top: var(--space-xs);
   font-size: 0.95rem;
-  color: var(--text-secondary);
+  color: var(--accent-cream);
 }
 
 .tutorial-table-row {
@@ -706,18 +706,20 @@
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
-  transition: transform 0.2s ease, filter 0.2s ease;
+  transform: translateY(0);
+  transition:
+    transform 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform, filter;
 }
 
 .tutorial-tool-item:hover,
 .tutorial-tool-item:focus-visible {
-  filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.3));
+  transform: translateY(-2em) !important;
+  filter:
+    drop-shadow(0 14px 20px rgba(0, 0, 0, 0.28))
+    drop-shadow(0 0 22px rgba(245, 230, 163, 0.844));
   outline: none;
-}
-
-.tutorial-tool-item:hover .tutorial-tool-placemat,
-.tutorial-tool-item:focus-visible .tutorial-tool-placemat {
-  opacity: 1;
 }
 
 .tutorial-tool-placemat {
@@ -726,12 +728,18 @@
   bottom: -16px;
   left: -24px;
   right: -24px;
-  background: rgba(245, 230, 163, 0.3);
   border-radius: 12px;
-  opacity: 0;
-  transition: opacity 0.3s ease;
+  transform: scale(0.92);
+  transition:
+    opacity 260ms ease,
+    transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
   z-index: 0;
   pointer-events: none;
+}
+
+.tutorial-tool-item:hover .tutorial-tool-placemat,
+.tutorial-tool-item:focus-visible .tutorial-tool-placemat {
+  transform: scale(1);
 }
 
 .tutorial-tool-img {

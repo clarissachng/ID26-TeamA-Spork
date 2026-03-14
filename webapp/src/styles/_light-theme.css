@@ -203,3 +203,40 @@ body,
 [data-theme="light"] body:has(#choreograph.active)::before {
   opacity: 0;
 }
+
+/* ── Light theme: Tutorial selection screen ───────────── */
+[data-theme="light"] #tutorial.page {
+  background-color: #abacca;
+}
+
+[data-theme="light"] #tutorial .tutorial-header h2 {
+  color: #3f2f22;
+}
+
+[data-theme="light"] #tutorial .tutorial-header .subtitle {
+  color: #6e5a48;
+}
+
+[data-theme="light"] #tutorial .tutorial-tool-placemat {
+  background: rgba(204, 159, 77, 0.18);
+}
+
+[data-theme="light"] #tutorial .tutorial-tool-item:hover,
+[data-theme="light"] #tutorial .tutorial-tool-item:focus-visible {
+  filter: none;
+}
+
+[data-theme="light"] #tutorial .tutorial-tool-item:hover .tutorial-tool-img,
+[data-theme="light"] #tutorial .tutorial-tool-item:focus-visible .tutorial-tool-img {
+  filter:
+    drop-shadow(0 14px 18px rgba(61, 46, 30, 0.2))
+    drop-shadow(0 0 22px rgba(214, 181, 126, 0.75));
+}
+
+[data-theme="light"] #tutorial .tutorial-tool-motion {
+  color: #d4a574;
+}
+
+[data-theme="light"] #tutorial .tutorial-tool-instruction {
+  color: #f5e6d0;
+}
