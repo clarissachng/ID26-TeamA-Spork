@@ -1,16 +1,15 @@
 /**
  * Choreograph page — tool-first creative mode.
  *
- * Recording and replay both use a strict two-phase loop per step:
+ * Recording uses a strict two-phase loop per step:
  * 1. Scan a tool
  * 2. Perform the motion
  */
 import { router } from './router.ts';
 import { MOTION_META, type MotionType, type RecordedStep, type SavedChoreography } from '../types/motion.types.ts';
-import { CupFill } from '../components/CupFill.ts';
-import { MotionPrompt } from '../components/MotionPrompt.ts';
 
 const STORAGE_KEY = 'spork_choreographies';
+const CHOREO_REPLAY_STORAGE_KEY = 'spork_choreo_replay';
 const KEY_MOTION_MAP: Record<string, MotionType> = {
   '1': 'grinding',
   '2': 'up_down',
@@ -19,7 +18,6 @@ const KEY_MOTION_MAP: Record<string, MotionType> = {
 const FALLBACK_TOOL = 'placeholder-tool';
 
 type RecordPhase = 'idle' | 'scan' | 'motion';
-type ReplayPhase = 'scan' | 'motion' | 'complete';
 
 export function createChoreograph(): HTMLElement {
   const page = document.createElement('div');
@@ -88,7 +86,7 @@ export function createChoreograph(): HTMLElement {
                 <span class="ch-stage-arrow__glyph">→</span>
               </div>
 
-              <div class="ch-stage-card ch-stage-card--muted" id="ch-motion-card">
+              <div class="ch-stage-card" id="ch-motion-card">
                 <div class="ch-stage-card__eyebrow">Phase 2</div>
                 <div class="ch-stage-card__visual" id="ch-motion-visual"></div>
                 <div class="ch-stage-card__label" id="ch-motion-label">Perform the motion</div>
@@ -124,36 +122,6 @@ export function createChoreograph(): HTMLElement {
         </div>
       </div>
 
-      <div id="ch-replay-section" class="stack ch-panel hidden">
-        <div class="ch-status-strip">
-          <span id="ch-replay-phase" class="ch-phase-badge" data-phase="scan">Scan</span>
-          <span id="ch-replay-step" class="ch-step-counter"></span>
-        </div>
-        <h3 id="ch-replay-title"></h3>
-        <div class="ch-stage ch-stage--replay">
-          <div class="ch-stage-card">
-            <div class="ch-stage-card__eyebrow">Tool</div>
-            <div class="ch-stage-card__visual" id="ch-replay-tool-visual"></div>
-            <div class="ch-stage-card__label" id="ch-replay-tool-label"></div>
-            <div class="ch-stage-card__caption" id="ch-replay-tool-caption"></div>
-          </div>
-
-          <div class="ch-stage-arrow" id="ch-replay-arrow" aria-hidden="true">
-            <span class="ch-stage-arrow__glyph">→</span>
-          </div>
-
-          <div class="ch-stage-card ch-stage-card--muted" id="ch-replay-motion-card">
-            <div class="ch-stage-card__eyebrow">Motion</div>
-            <div class="ch-stage-card__visual" id="ch-replay-motion-visual"></div>
-            <div class="ch-stage-card__label" id="ch-replay-motion-label"></div>
-            <div class="ch-stage-card__caption" id="ch-replay-motion-caption"></div>
-          </div>
-        </div>
-        <div id="ch-replay-prompt-area" class="ch-replay-prompt"></div>
-        <div id="ch-replay-cup-area" class="ch-replay-cup"></div>
-        <div id="ch-replay-result"></div>
-        <button class="btn btn--ghost btn--small" id="ch-replay-back">Back to list</button>
-      </div>
     </div>
   `;
 
@@ -165,7 +133,6 @@ export function createChoreograph(): HTMLElement {
   let motionHandler: ((e: Event) => void) | null = null;
   let scanHandler: ((e: Event) => void) | null = null;
   let keyHandler: ((e: KeyboardEvent) => void) | null = null;
-  let replayCleanup: (() => void) | null = null;
 
   const liveFeed = page.querySelector('#ch-live-feed') as HTMLElement;
   const recordedList = page.querySelector('#ch-recorded-list') as HTMLElement;
@@ -177,9 +144,6 @@ export function createChoreograph(): HTMLElement {
   const savedList = page.querySelector('#ch-saved-list') as HTMLElement;
   const emptyMsg = page.querySelector('#ch-empty-msg') as HTMLElement;
   const recordSection = page.querySelector('#ch-record-section') as HTMLElement;
-  const savedSection = page.querySelector('#ch-saved-section') as HTMLElement;
-  const replaySection = page.querySelector('#ch-replay-section') as HTMLElement;
-  const replayBack = page.querySelector('#ch-replay-back') as HTMLButtonElement;
   const phaseBadge = page.querySelector('#ch-phase-badge') as HTMLElement;
   const stepCounter = page.querySelector('#ch-step-counter') as HTMLElement;
   const toolCard = page.querySelector('#ch-tool-card') as HTMLElement;
@@ -197,13 +161,11 @@ export function createChoreograph(): HTMLElement {
   function showBookView(): void {
     bookView.classList.remove('hidden');
     recordSection.classList.add('hidden');
-    replaySection.classList.add('hidden');
   }
 
   function showRecordView(): void {
     bookView.classList.add('hidden');
     recordSection.classList.remove('hidden');
-    replaySection.classList.add('hidden');
   }
 
   function formatToolName(tool?: string, fallback?: string): string {
@@ -312,7 +274,7 @@ export function createChoreograph(): HTMLElement {
       motionCaption.textContent = MOTION_META[options.motion].description;
     } else {
       renderToken(motionVisual, 'Go');
-      motionLabel.textContent = 'Now perform the motion';
+      motionLabel.textContent = 'Perform the motion';
       motionCaption.textContent = 'Your next motion is saved.';
     }
   }
@@ -391,7 +353,7 @@ export function createChoreograph(): HTMLElement {
     btnRecord.classList.remove('btn--rose');
     btnRecord.classList.add('btn--gold');
     btnSave.classList.add('hidden');
-    liveFeed.textContent = 'Recording started. Scan a tool to arm the next step.';
+    liveFeed.textContent = 'Recording started. Scan a tool for the next step.';
     liveFeed.dataset.state = 'active';
     setCapturePreview();
     setRecordPhaseUi('scan');
@@ -402,7 +364,7 @@ export function createChoreograph(): HTMLElement {
       pendingTool = tool?.trim() || FALLBACK_TOOL;
       setCapturePreview(pendingTool);
       setRecordPhaseUi('motion', { tool: pendingTool });
-      liveFeed.textContent = `${formatToolName(pendingTool)} scanned. Now perform one motion.`;
+      liveFeed.textContent = `${formatToolName(pendingTool)} scanned. Perform your motion.`;
     };
 
     motionHandler = (e: Event) => {
@@ -553,195 +515,16 @@ export function createChoreograph(): HTMLElement {
   }
 
   function startReplay(choreo: SavedChoreography): void {
-    replayCleanup?.();
-
-    bookView.classList.add('hidden');
-    recordSection.classList.add('hidden');
-    replaySection.classList.remove('hidden');
-    savedSection.classList.add('hidden');
-
-    const titleEl = page.querySelector('#ch-replay-title') as HTMLElement;
-    const replayPhaseEl = page.querySelector('#ch-replay-phase') as HTMLElement;
-    const replayStepEl = page.querySelector('#ch-replay-step') as HTMLElement;
-    const replayToolVisual = page.querySelector('#ch-replay-tool-visual') as HTMLElement;
-    const replayToolLabel = page.querySelector('#ch-replay-tool-label') as HTMLElement;
-    const replayToolCaption = page.querySelector('#ch-replay-tool-caption') as HTMLElement;
-    const replayArrow = page.querySelector('#ch-replay-arrow') as HTMLElement;
-    const replayMotionCard = page.querySelector('#ch-replay-motion-card') as HTMLElement;
-    const replayMotionVisual = page.querySelector('#ch-replay-motion-visual') as HTMLElement;
-    const replayMotionLabel = page.querySelector('#ch-replay-motion-label') as HTMLElement;
-    const replayMotionCaption = page.querySelector('#ch-replay-motion-caption') as HTMLElement;
-    const promptArea = page.querySelector('#ch-replay-prompt-area') as HTMLElement;
-    const cupArea = page.querySelector('#ch-replay-cup-area') as HTMLElement;
-    const resultEl = page.querySelector('#ch-replay-result') as HTMLElement;
-
-    titleEl.textContent = `Replaying: ${choreo.name}`;
-    promptArea.innerHTML = '';
-    cupArea.innerHTML = '';
-    resultEl.innerHTML = '';
-
-    const cup = new CupFill(cupArea);
-    const motionPrompt = new MotionPrompt(promptArea);
-
-    let idx = 0;
-    let score = 0;
-    let replayPhase: ReplayPhase = 'scan';
-    let replayMotionHandler: ((e: Event) => void) | null = null;
-    let replayScanHandler: ((e: Event) => void) | null = null;
-    let replayKeyHandler: ((e: KeyboardEvent) => void) | null = null;
-
-    function cleanupReplayListeners(): void {
-      if (replayScanHandler) {
-        document.removeEventListener('tool-scanned', replayScanHandler);
-        replayScanHandler = null;
-      }
-      if (replayMotionHandler) {
-        document.removeEventListener('motion-detected', replayMotionHandler);
-        replayMotionHandler = null;
-      }
-      if (replayKeyHandler) {
-        document.removeEventListener('keydown', replayKeyHandler);
-        replayKeyHandler = null;
-      }
+    try {
+      sessionStorage.setItem(CHOREO_REPLAY_STORAGE_KEY, JSON.stringify(choreo));
+    } catch {
+      // Ignore storage write failures and still attempt navigation.
     }
-
-    function setReplayPhase(step: RecordedStep, nextPhase: ReplayPhase): void {
-      replayPhase = nextPhase;
-      replayPhaseEl.dataset.phase = nextPhase === 'complete' ? 'idle' : nextPhase;
-      replayStepEl.textContent = `Step ${Math.min(idx + 1, choreo.steps.length)} of ${choreo.steps.length}`;
-      replayArrow.classList.toggle('is-active', nextPhase === 'motion');
-      replayMotionCard.classList.toggle('ch-stage-card--muted', nextPhase !== 'motion');
-      replayMotionCard.classList.toggle('ch-stage-card--active', nextPhase === 'motion');
-
-      renderMotionAsset(replayToolVisual, step.motion);
-      replayToolLabel.textContent = formatToolName(step.tool, MOTION_META[step.motion].prop);
-
-      if (nextPhase === 'scan') {
-        replayPhaseEl.textContent = 'Scan';
-        replayToolCaption.textContent = 'Scan this tool before the gesture can begin.';
-        renderToken(replayMotionVisual, 'Locked');
-        replayMotionLabel.textContent = 'Motion locked';
-        replayMotionCaption.textContent = 'Scanning arms the expected motion for this step.';
-        motionPrompt.clear();
-        return;
-      }
-
-      if (nextPhase === 'motion') {
-        replayPhaseEl.textContent = 'Move';
-        replayToolCaption.textContent = 'Tool confirmed. Match the recorded gesture now.';
-        renderMotionAsset(replayMotionVisual, step.motion, true);
-        replayMotionLabel.textContent = MOTION_META[step.motion].label;
-        replayMotionCaption.textContent = MOTION_META[step.motion].description;
-        return;
-      }
-
-      replayPhaseEl.textContent = 'Done';
-      replayToolCaption.textContent = 'Replay complete.';
-      renderToken(replayMotionVisual, 'Done');
-      replayMotionLabel.textContent = 'Sequence complete';
-      replayMotionCaption.textContent = 'Your score is ready below.';
-      motionPrompt.clear();
-    }
-
-    function nextStep(): void {
-      cleanupReplayListeners();
-
-      if (idx >= choreo.steps.length) {
-        finishReplay();
-        return;
-      }
-
-      const step = choreo.steps[idx];
-      setReplayPhase(step, 'scan');
-
-      replayScanHandler = () => {
-        cleanupReplayListeners();
-        setReplayPhase(step, 'motion');
-        motionPrompt.show(step.motion);
-        motionPrompt.startTimer(10, () => {
-          motionPrompt.markFail();
-          cleanupReplayListeners();
-          idx++;
-          setTimeout(nextStep, 800);
-        });
-
-        replayMotionHandler = (e: Event) => {
-          const { motion, confidence } = (e as CustomEvent).detail as { motion: MotionType; confidence: number };
-          if (motion === step.motion) {
-            motionPrompt.stopTimer();
-            motionPrompt.markSuccess();
-            score += confidence;
-            cup.setFill(score / choreo.steps.length);
-            cleanupReplayListeners();
-            idx++;
-            setTimeout(nextStep, 800);
-          }
-        };
-
-        replayKeyHandler = (e: KeyboardEvent) => {
-          if (!page.classList.contains('active') || replayPhase !== 'motion') return;
-          if (e.key === ' ' || e.key === 'Enter') {
-            e.preventDefault();
-            document.dispatchEvent(new CustomEvent('motion-detected', {
-              detail: { motion: step.motion, confidence: 1 },
-            }));
-          }
-        };
-
-        document.addEventListener('motion-detected', replayMotionHandler);
-        document.addEventListener('keydown', replayKeyHandler);
-      };
-
-      replayKeyHandler = (e: KeyboardEvent) => {
-        if (!page.classList.contains('active') || replayPhase !== 'scan') return;
-        if (e.key === ' ' || e.key === 'Enter') {
-          e.preventDefault();
-          document.dispatchEvent(new CustomEvent('tool-scanned', {
-            detail: { tool: step.tool ?? MOTION_META[step.motion].prop },
-          }));
-        }
-      };
-
-      document.addEventListener('tool-scanned', replayScanHandler);
-      document.addEventListener('keydown', replayKeyHandler);
-    }
-
-    function finishReplay(): void {
-      cleanupReplayListeners();
-      setReplayPhase(choreo.steps[choreo.steps.length - 1], 'complete');
-      motionPrompt.destroy();
-      const pct = Math.round((score / choreo.steps.length) * 100);
-      resultEl.innerHTML = `
-        <div class="stack ch-replay-result-stack">
-          <span style="font-size: 3rem;">${pct >= 70 ? '🎉' : '😅'}</span>
-          <h3>${pct >= 70 ? 'Nailed it!' : 'Keep practising!'}</h3>
-          <p>Accuracy: <strong>${pct}%</strong></p>
-        </div>
-      `;
-    }
-
-    replayCleanup = () => {
-      cleanupReplayListeners();
-      motionPrompt.destroy();
-      cup.destroy();
-      resultEl.innerHTML = '';
-    };
-
-    nextStep();
+    router.go('play', { replayId: choreo.id });
   }
-
-  replayBack.addEventListener('click', () => {
-    replayCleanup?.();
-    replayCleanup = null;
-    replaySection.classList.add('hidden');
-    savedSection.classList.remove('hidden');
-    showBookView();
-  });
 
   page.querySelector('[data-action="back"]')!
     .addEventListener('click', () => {
-      replayCleanup?.();
-      replayCleanup = null;
       if (recording) stopRecording();
       router.home();
     });
@@ -749,18 +532,13 @@ export function createChoreograph(): HTMLElement {
   const observer = new MutationObserver(() => {
     if (page.classList.contains('active')) {
       renderSavedList();
-      replayCleanup?.();
-      replayCleanup = null;
       if (recording) stopRecording();
       showBookView();
-      savedSection.classList.remove('hidden');
       liveFeed.dataset.state = 'idle';
       setCapturePreview();
       setRecordPhaseUi('idle');
       liveFeed.textContent = 'Press Record to start.';
     } else {
-      replayCleanup?.();
-      replayCleanup = null;
       if (recording) stopRecording();
     }
   });

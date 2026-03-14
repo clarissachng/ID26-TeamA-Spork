@@ -7,10 +7,45 @@
  *  - Step progress indicator
  */
 import { router } from './router.ts';
-import { LEVELS, MOTION_META, type MotionType, type GameLevel } from '../types/motion.types.ts';
+import { LEVELS, MOTION_META, type MotionType, type GameLevel, type SavedChoreography } from '../types/motion.types.ts';
 
 import { CupFill } from '../components/CupFill.ts';
 import { MotionPrompt } from '../components/MotionPrompt.ts';
+
+const CHOREO_REPLAY_STORAGE_KEY = 'spork_choreo_replay';
+
+type PlayStep = {
+  motion: MotionType;
+  duration: number;
+  label: string;
+  description: string;
+  tool?: string;
+};
+
+function formatToolName(tool?: string, fallback?: string): string {
+  const raw = (tool ?? fallback ?? 'Tool').trim();
+  if (!raw) return fallback ?? 'Tool';
+  return raw
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function loadChoreographyReplay(replayId?: string): SavedChoreography | null {
+  if (!replayId) return null;
+
+  try {
+    const raw = sessionStorage.getItem(CHOREO_REPLAY_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as SavedChoreography;
+    if (parsed.id !== replayId || !Array.isArray(parsed.steps) || parsed.steps.length === 0) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
 
 export function createPlayPage(): HTMLElement {
   const page = document.createElement('div');
@@ -36,7 +71,13 @@ export function createPlayPage(): HTMLElement {
   `;
 
   page.querySelector('[data-action="back"]')!
-    .addEventListener('click', () => router.go('level-select'));
+    .addEventListener('click', () => {
+      if (page.dataset.replayId) {
+        router.go('choreograph');
+        return;
+      }
+      router.go('level-select');
+    });
 
   /* ── Game logic runs when page becomes active ── */
   const observer = new MutationObserver(() => {
@@ -51,10 +92,26 @@ export function createPlayPage(): HTMLElement {
 
 /* ── Level runner ── */
 function startLevel(page: HTMLElement): void {
+  const replayId = page.dataset.replayId?.trim();
+  const replay = loadChoreographyReplay(replayId);
+
   const levelId = parseInt(page.dataset.levelId ?? '1', 10);
   const level: GameLevel = LEVELS.find(l => l.id === levelId) ?? LEVELS[0];
 
-  const VISUAL_STAMP_COUNT = level.steps.length;
+  const isChoreographyReplay = Boolean(replay);
+  const runName = replay ? replay.name : level.name;
+  const runPassingScore = replay ? 70 : level.passingScore;
+  const runSteps: PlayStep[] = replay
+    ? replay.steps.map((step, index) => ({
+      motion: step.motion,
+      duration: 8,
+      label: `Step ${index + 1}`,
+      description: MOTION_META[step.motion].description,
+      tool: step.tool,
+    }))
+    : level.steps;
+
+  const VISUAL_STAMP_COUNT = runSteps.length;
   const stampVisualClasses = Array.from({ length: VISUAL_STAMP_COUNT }, (_, i) => `stamp-${i + 1}`);
 
   const titleEl = page.querySelector('#play-title') as HTMLElement;
@@ -68,7 +125,7 @@ function startLevel(page: HTMLElement): void {
   const resultArea = page.querySelector('#play-result') as HTMLElement;
 
   // Reset
-  titleEl.textContent = level.name;
+  titleEl.textContent = isChoreographyReplay ? `Replay: ${runName}` : runName;
   progressEl.innerHTML = '';
   stampsEl.innerHTML = '';
   promptArea.innerHTML = '';
@@ -89,12 +146,12 @@ function startLevel(page: HTMLElement): void {
   });
 
   const stamps: HTMLElement[] = Array.from({ length: VISUAL_STAMP_COUNT }, (_, i) => {
-    const stepMotion = level.steps[i].motion;
+    const stepMotion = runSteps[i].motion;
     const assetSrc = MOTION_META[stepMotion].asset;
     const assetAlt = MOTION_META[stepMotion].label;
     const stamp = document.createElement('div');
     stamp.className = `play-stamp ${stampVisualClasses[i]}`;
-    stamp.title = MOTION_META[stepMotion].prop;
+    stamp.title = formatToolName(runSteps[i].tool, MOTION_META[stepMotion].prop);
     stamp.innerHTML = `
       <div class="play-stamp__inner">
         <img class="play-stamp__asset" src="${assetSrc}" alt="${assetAlt}" />
@@ -161,12 +218,12 @@ function startLevel(page: HTMLElement): void {
    * Waits for an NFC `tool-scanned` event or a keypress fallback.
    */
   function advance(): void {
-    if (currentStep >= level.steps.length) {
+    if (currentStep >= runSteps.length) {
       finish();
       return;
     }
 
-    const step = level.steps[currentStep];
+    const step = runSteps[currentStep];
     const meta = MOTION_META[step.motion];
 
     // Show component prompt (hidden arrow for now)
@@ -175,7 +232,7 @@ function startLevel(page: HTMLElement): void {
 
     // Show scan instruction
     scanPromptEl.classList.remove('hidden');
-    scanPromptEl.textContent = `Show your ${meta.prop} to Mr Spork`;
+    scanPromptEl.textContent = `Show your ${formatToolName(step.tool, meta.prop)} to Mr Spork`;
 
     // Listen for NFC scan
     scanHandler = ((e: Event) => {
@@ -207,7 +264,7 @@ function startLevel(page: HTMLElement): void {
     if (scanHandler) { document.removeEventListener('tool-scanned', scanHandler); scanHandler = null; }
     if (keyHandler) { document.removeEventListener('keydown', keyHandler); keyHandler = null; }
 
-    const step = level.steps[currentStep];
+    const step = runSteps[currentStep];
     const meta = MOTION_META[step.motion];
 
     // Update scan prompt to motion instruction
@@ -315,9 +372,9 @@ function startLevel(page: HTMLElement): void {
     prompt.destroy();
     cleanupListeners();
 
-    const pct = Math.round((score / level.steps.length) * 100);
-    const passed = pct >= level.passingScore;
-    const nextLevel = LEVELS.find(l => l.id === level.id + 1);
+    const pct = Math.round((score / runSteps.length) * 100);
+    const passed = pct >= runPassingScore;
+    const nextLevel = isChoreographyReplay ? null : LEVELS.find(l => l.id === level.id + 1);
 
     resultArea.classList.remove('hidden');
     resultArea.innerHTML = `
@@ -327,7 +384,7 @@ function startLevel(page: HTMLElement): void {
       <div class="row" style="justify-content: center; gap: var(--space-md); margin-top: var(--space-md);">
         <button class="btn btn--ghost btn--small" data-action="retry">Retry</button>
         ${nextLevel ? '<button class="btn btn--gold btn--small" data-action="next">Next Round</button>' : ''}
-        <button class="btn btn--primary btn--small" data-action="menu">Back to Menu</button>
+        <button class="btn btn--primary btn--small" data-action="menu">${isChoreographyReplay ? 'Back to Recipes' : 'Back to Menu'}</button>
       </div>
     `;
 
@@ -340,7 +397,13 @@ function startLevel(page: HTMLElement): void {
         });
     }
     resultArea.querySelector('[data-action="menu"]')!
-      .addEventListener('click', () => router.home());
+      .addEventListener('click', () => {
+        if (isChoreographyReplay) {
+          router.go('choreograph');
+          return;
+        }
+        router.home();
+      });
   }
 
   advance();
