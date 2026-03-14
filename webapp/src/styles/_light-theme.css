@@ -188,3 +188,18 @@ body,
 [data-theme="light"] .td-counter {
   color: var(--text-primary);
 }
+
+/* Keep choreograph background consistent in light mode */
+[data-theme="light"] .choreograph-bg {
+  background-image: url('/assets/recipe_book.png');
+  background-size: min(98vw, 1600px) auto;
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-color: var(--light-bg);
+  justify-content: center;
+  align-items: center;
+}
+
+[data-theme="light"] body:has(#choreograph.active)::before {
+  opacity: 0;
+}

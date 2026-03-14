@@ -389,9 +389,11 @@
 }
 
 .choreograph-bg {
-  background-image: url('/assets/main_table.png');
-  background-size: cover;
-  background-position: center bottom;
+  background-image: url('/assets/recipe_book.png');
+  background-size: min(98vw, 1600px) auto;
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-color: var(--bg-deep);
   justify-content: center;
   align-items: center;
 }
