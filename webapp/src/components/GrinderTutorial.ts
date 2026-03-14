@@ -7,7 +7,6 @@
  *  - grinder_handle.png (rotating handle)
  *
  * States:
- *  - idle: slow continuous rotation
  *  - success: fast spin on correct motion (circle)
  *  - wrong: shake animation on incorrect motion
  */
@@ -16,7 +15,7 @@ import type { MotionType } from '../types/motion.types.ts';
 export class GrinderTutorial {
   private el: HTMLElement;
   private container: HTMLElement;
-  private handle: HTMLElement;
+  private handle: HTMLImageElement;
   private motionHandler: ((e: Event) => void) | null = null;
   private expectedMotion: MotionType = 'grinding';
 
@@ -29,25 +28,18 @@ export class GrinderTutorial {
 
     // Three layers: body (static), full (hidden reference), handle (rotating)
     const body = document.createElement('img');
-    body.src = '/assets/grinder_body.png';
-    body.alt = 'Grinder body (static)';
+    body.src = '/assets/tutorial_grinder/grinder_body.png';
+    body.alt = 'Grinder body';
     body.className = 'grinder-layer grinder-body';
     body.draggable = false;
 
-    const full = document.createElement('img');
-    full.src = '/assets/grinder_full.png';
-    full.alt = 'Full grinder (reference)';
-    full.className = 'grinder-layer grinder-full hidden';
-    full.draggable = false;
-
     this.handle = document.createElement('img');
-    this.handle.src = '/assets/grinder_handle.png';
+    this.handle.src = '/assets/tutorial_grinder/grinder_handle.png';
     this.handle.alt = 'Grinder handle';
     this.handle.className = 'grinder-layer grinder-handle';
     this.handle.draggable = false;
 
     this.container.appendChild(body);
-    this.container.appendChild(full);
     this.container.appendChild(this.handle);
 
     // Wrapper div for instruction and arrow
@@ -76,8 +68,6 @@ export class GrinderTutorial {
 
       if (detail.motion === this.expectedMotion) {
         this.triggerSuccess();
-      } else {
-        this.triggerWrong();
       }
     });
 
@@ -106,15 +96,6 @@ export class GrinderTutorial {
       this.el.classList.remove('success');
       this.handle.style.animation = 'none';
     }, { once: true });
-  }
-
-  /** Wrong motion: shake + red flash */
-  private triggerWrong(): void {
-    this.el.classList.add('wrong');
-
-    setTimeout(() => {
-      this.el.classList.remove('wrong');
-    }, 500);
   }
 
   /** Reset to still state */

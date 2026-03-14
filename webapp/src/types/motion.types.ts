@@ -149,6 +149,7 @@ export interface RecordedStep {
   motion: MotionType;
   timestamp: number;    // ms since recording start
   confidence: number;
+  tool?: string;
 }
 
 export interface SavedChoreography {
