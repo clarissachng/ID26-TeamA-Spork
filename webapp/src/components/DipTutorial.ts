@@ -13,6 +13,7 @@
 export class DipTutorial {
   private el: HTMLElement;
   private teabag: HTMLImageElement;
+  private cup: HTMLImageElement;
   private motionHandler: ((e: Event) => void) | null = null;
 
   constructor(parent: HTMLElement) {
@@ -26,12 +27,19 @@ export class DipTutorial {
     scene.className = 'dip-scene';
 
     this.teabag = document.createElement('img');
-    this.teabag.src = '/assets/front_tea.PNG';
+    this.teabag.src = '/assets/tutorial-tea/teabag.PNG';
     this.teabag.alt = 'Teabag';
     this.teabag.className = 'dip-layer dip-teabag';
     this.teabag.draggable = false;
 
+    this.cup = document.createElement('img');
+    this.cup.src = '/assets/tutorial-tea/cup.PNG';
+    this.cup.alt = 'Cup';
+    this.cup.className = 'dip-layer dip-cup';
+    this.cup.draggable = false;
+
     scene.appendChild(this.teabag);
+    scene.appendChild(this.cup);
 
     wrapper.appendChild(scene);
 
@@ -47,40 +55,29 @@ export class DipTutorial {
       const detail = (e as CustomEvent).detail as { motion: string; confidence: number };
       if (detail.motion === 'up_down') {
         this.triggerSuccess();
-      } else {
-        this.triggerWrong();
       }
     });
     document.addEventListener('motion-detected', this.motionHandler);
   }
 
-  /** Static idle — no animation until visuals are added */
+  /** Idle loop: teabag hovers above cup with a gentle bobbing hint */
   private startIdle(): void {
     this.el.classList.remove('success', 'wrong');
     this.teabag.style.animation = 'none';
   }
 
-  /** Correct motion: fast spin, then reset to still for the next round */
+  /** Correct motion: teabag dips twice into cup, then returns to still state */
   private triggerSuccess(): void {
     this.el.classList.add('success');
     this.teabag.style.animation = '';
     void this.teabag.offsetWidth; // force reflow so re-trigger works
-    this.teabag.style.animation = 'dipSuccess 0.8s ease-out forwards';
+    this.teabag.style.animation = 'dipSuccess 1.6s cubic-bezier(0.22, 1, 0.36, 1) forwards';
 
-    // After the spin finishes, go back to still so it can animate again
+    // Resume idle hover after the dip completes.
     this.teabag.addEventListener('animationend', () => {
       this.el.classList.remove('success');
       this.teabag.style.animation = 'none';
     }, { once: true });
-  }
-
-  /** Wrong motion: shake + red flash */
-  private triggerWrong(): void {
-    this.el.classList.add('wrong');
-
-    setTimeout(() => {
-      this.el.classList.remove('wrong');
-    }, 500);
   }
 
   /** Reset to still state */

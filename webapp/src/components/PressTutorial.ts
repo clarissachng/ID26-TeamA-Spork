@@ -1,8 +1,8 @@
 /**
  * PressTutorial — interactive french press animation component.
  *
- * Uses front_press.PNG asset, animating it with a downward pressing motion
- * to demonstrate the "press down" gesture (like pushing a french press plunger).
+ * Uses layered press assets (bottom, middle, top), with only the middle layer
+ * animating downward to demonstrate the "press down" gesture.
  *
  * States:
  *  - idle: gentle downward nudge hint
@@ -12,7 +12,7 @@
 
 export class PressTutorial {
   private el: HTMLElement;
-  private press: HTMLImageElement;
+  private middleLayer!: HTMLImageElement;
   private motionHandler: ((e: Event) => void) | null = null;
 
   constructor(parent: HTMLElement) {
@@ -25,13 +25,24 @@ export class PressTutorial {
     const scene = document.createElement('div');
     scene.className = 'press-scene';
 
-    this.press = document.createElement('img');
-    this.press.src = '/assets/front_press.PNG';
-    this.press.alt = 'French Press';
-    this.press.className = 'press-layer press-plunger';
-    this.press.draggable = false;
+    const layers = [
+      { key: 'bottom', src: '/assets/tutorial_press/press_bottom.png', alt: 'Press bottom' },
+      { key: 'middle', src: '/assets/tutorial_press/press_middle.png', alt: 'Press plunger' },
+      { key: 'top', src: '/assets/tutorial_press/press_top.png', alt: 'Press top' }
+    ] as const;
 
-    scene.appendChild(this.press);
+    layers.forEach((layer) => {
+      const img = document.createElement('img');
+      img.src = layer.src;
+      img.alt = layer.alt;
+      img.className = `press-layer press-${layer.key}`;
+      img.draggable = false;
+      scene.appendChild(img);
+
+      if (layer.key === 'middle') {
+        this.middleLayer = img;
+      }
+    });
 
     wrapper.appendChild(scene);
 
@@ -47,8 +58,6 @@ export class PressTutorial {
       const detail = (e as CustomEvent).detail as { motion: string; confidence: number };
       if (detail.motion === 'press_down') {
         this.triggerSuccess();
-      } else {
-        this.triggerWrong();
       }
     });
     document.addEventListener('motion-detected', this.motionHandler);
@@ -57,13 +66,20 @@ export class PressTutorial {
   /** Static idle — no animation until visuals are added */
   private startIdle(): void {
     this.el.classList.remove('success', 'wrong');
-    this.press.style.animation = 'none';
+    this.middleLayer.style.animation = 'none';
   }
 
   /** Correct motion: full press down */
   triggerSuccess(): void {
     this.el.classList.add('success');
-    this.press.style.animation = 'pressSuccess 0.7s ease-out forwards';
+    this.middleLayer.style.animation = '';
+    void this.middleLayer.offsetWidth;
+    this.middleLayer.style.animation = 'pressSuccess 1.25s cubic-bezier(0.22, 1, 0.36, 1) forwards';
+
+    this.middleLayer.addEventListener('animationend', () => {
+      this.el.classList.remove('success');
+      this.middleLayer.style.animation = 'none';
+    }, { once: true });
   }
 
   /** Wrong motion: shake */

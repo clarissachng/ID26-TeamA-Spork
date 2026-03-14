@@ -129,6 +129,9 @@ export function createTutorialDetail(): HTMLElement {
   let zStrip: SensorZStrip | null = null;
   let resolved = false; // whether the round already succeeded
   let successCount = 0;  // number of successful motions (need 2 to pass)
+  let lastSuccessAt = 0;
+  const SUCCESS_STEP = 1;
+  const SUCCESS_DEBOUNCE_MS = 600;
   const REQUIRED_SUCCESSES = 2;
 
   /* ── Activate / deactivate ── */
@@ -136,6 +139,7 @@ export function createTutorialDetail(): HTMLElement {
     if (page.classList.contains('active')) {
       resolved = false;
       successCount = 0;
+      lastSuccessAt = 0;
       hidePopup(page);
       updateCounter(page, 0, REQUIRED_SUCCESSES);
 
@@ -185,10 +189,14 @@ export function createTutorialDetail(): HTMLElement {
       if (serial.isConnected) {
         motionHandler = createMotionListener(page, motion, (confidence: number) => {
           if (!resolved) {
+            const now = Date.now();
+            if (now - lastSuccessAt < SUCCESS_DEBOUNCE_MS) return;
+            lastSuccessAt = now;
+
             cup?.confirmFill(confidence);
             xyMap?.confirm();
             zStrip?.confirm();
-            successCount++;
+            successCount = Math.min(REQUIRED_SUCCESSES, successCount + SUCCESS_STEP);
             updateCounter(page, successCount, REQUIRED_SUCCESSES);
             if (successCount >= REQUIRED_SUCCESSES) {
               resolved = true;
@@ -216,10 +224,14 @@ export function createTutorialDetail(): HTMLElement {
           }));
           // Only count here if no Arduino motionHandler (it would double-count)
           if (!motionHandler && !resolved) {
+            const now = Date.now();
+            if (now - lastSuccessAt < SUCCESS_DEBOUNCE_MS) return;
+            lastSuccessAt = now;
+
             cup?.confirmFill(1);
             xyMap?.confirm();
             zStrip?.confirm();
-            successCount++;
+            successCount = Math.min(REQUIRED_SUCCESSES, successCount + SUCCESS_STEP);
             updateCounter(page, successCount, REQUIRED_SUCCESSES);
             if (successCount >= REQUIRED_SUCCESSES) {
               resolved = true;
@@ -327,6 +339,12 @@ function onSuccess(page: HTMLElement): void {
 
 function onWrong(page: HTMLElement): void {
   flashRadial(page, 'wrong');
+
+  const demoContainer = page.querySelector('#td-grinder-container') as HTMLElement;
+  demoContainer.classList.remove('td-wrong-shake');
+  void demoContainer.offsetWidth; // force reflow for quick re-trigger
+  demoContainer.classList.add('td-wrong-shake');
+  setTimeout(() => demoContainer.classList.remove('td-wrong-shake'), 450);
 }
 
 function updateCounter(page: HTMLElement, count: number, total: number): void {
