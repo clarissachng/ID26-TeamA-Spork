@@ -11,6 +11,7 @@
  *  - wrong: shake animation on incorrect motion
  */
 import type { MotionType } from '../types/motion.types.ts';
+import { assetUrl } from '../utils/asset.ts';
 
 export class GrinderTutorial {
   private el: HTMLElement;
@@ -28,13 +29,13 @@ export class GrinderTutorial {
 
     // Three layers: body (static), full (hidden reference), handle (rotating)
     const body = document.createElement('img');
-    body.src = '/assets/tutorial_grinder/grinder_body.png';
+    body.src = assetUrl('/assets/tutorial_grinder/grinder_body.png');
     body.alt = 'Grinder body';
     body.className = 'grinder-layer grinder-body';
     body.draggable = false;
 
     this.handle = document.createElement('img');
-    this.handle.src = '/assets/tutorial_grinder/grinder_handle.png';
+    this.handle.src = assetUrl('/assets/tutorial_grinder/grinder_handle.png');
     this.handle.alt = 'Grinder handle';
     this.handle.className = 'grinder-layer grinder-handle';
     this.handle.draggable = false;

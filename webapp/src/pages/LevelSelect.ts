@@ -7,6 +7,7 @@
  */
 import { router } from './router.ts';
 import { LEVELS } from '../types/motion.types.ts';
+import { assetUrl } from '../utils/asset.ts';
 
 export function createLevelSelect(): HTMLElement {
   const page = document.createElement('div');
@@ -67,7 +68,7 @@ export function createLevelSelect(): HTMLElement {
 }
 
 function levelAsset(id: number): string {
-  if (id === 1) return '/assets/front_tea.PNG';
-  if (id === 2) return '/assets/front_grinder.PNG';
-  return '/assets/front_whisk.PNG';
+  if (id === 1) return assetUrl('/assets/front_tea.PNG');
+  if (id === 2) return assetUrl('/assets/front_grinder.PNG');
+  return assetUrl('/assets/front_whisk.PNG');
 }

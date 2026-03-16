@@ -153,10 +153,13 @@ export function createTutorialDetail(): HTMLElement {
       const cupContainer = page.querySelector('#td-cup-container') as HTMLElement;
       cupContainer.innerHTML = '';
       if (motion === 'grinding') {
-        xyMap = new SensorXYMap(cupContainer);
+        xyMap = new SensorXYMap(cupContainer, '/assets/motion_arrows/circle.png');
         xyMap.startListening();
-      } else if (motion === 'up_down' || motion === 'press_down') {
-        zStrip = new SensorZStrip(cupContainer);
+      } else if (motion === 'up_down') {
+        zStrip = new SensorZStrip(cupContainer, '/assets/motion_arrows/up_down.png');
+        zStrip.startListening();
+      } else if (motion === 'press_down') {
+        zStrip = new SensorZStrip(cupContainer, '/assets/motion_arrows/press_down.png');
         zStrip.startListening();
       } else {
         cup = new CupFill(cupContainer);

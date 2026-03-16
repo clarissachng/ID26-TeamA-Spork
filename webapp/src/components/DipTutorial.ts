@@ -10,6 +10,8 @@
  *  - wrong: shake
  */
 
+import { assetUrl } from '../utils/asset.ts';
+
 export class DipTutorial {
   private el: HTMLElement;
   private teabag: HTMLImageElement;
@@ -27,13 +29,13 @@ export class DipTutorial {
     scene.className = 'dip-scene';
 
     this.teabag = document.createElement('img');
-    this.teabag.src = '/assets/tutorial-tea/teabag.PNG';
+    this.teabag.src = assetUrl('/assets/tutorial-tea/teabag.PNG');
     this.teabag.alt = 'Teabag';
     this.teabag.className = 'dip-layer dip-teabag';
     this.teabag.draggable = false;
 
     this.cup = document.createElement('img');
-    this.cup.src = '/assets/tutorial-tea/cup.PNG';
+    this.cup.src = assetUrl('/assets/tutorial-tea/cup.PNG');
     this.cup.alt = 'Cup';
     this.cup.className = 'dip-layer dip-cup';
     this.cup.draggable = false;

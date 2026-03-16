@@ -5,10 +5,12 @@
  * Persists mute preference and last-played track in localStorage.
  */
 
+import { assetUrl } from '../utils/asset.ts';
+
 const BGM_TRACKS = [
-  { label: 'Café Morning', src: '/assets/bgm/bgm01.mp3' },
-  { label: 'Matcha Hours', src: '/assets/bgm/bgm02.mp3' },
-  { label: 'Rainy Kettle', src: '/assets/bgm/bgm03.mp3' },
+  { label: 'Café Morning', src: assetUrl('/assets/bgm/bgm01.mp3') },
+  { label: 'Matcha Hours', src: assetUrl('/assets/bgm/bgm02.mp3') },
+  { label: 'Rainy Kettle', src: assetUrl('/assets/bgm/bgm03.mp3') },
 ];
 
 class BgmManager {

@@ -10,6 +10,8 @@
  *  - wrong: shake
  */
 
+import { assetUrl } from '../utils/asset.ts';
+
 export class PressTutorial {
   private el: HTMLElement;
   private middleLayer!: HTMLImageElement;
@@ -26,9 +28,9 @@ export class PressTutorial {
     scene.className = 'press-scene';
 
     const layers = [
-      { key: 'bottom', src: '/assets/tutorial_press/press_bottom.png', alt: 'Press bottom' },
-      { key: 'middle', src: '/assets/tutorial_press/press_middle.png', alt: 'Press plunger' },
-      { key: 'top', src: '/assets/tutorial_press/press_top.png', alt: 'Press top' }
+      { key: 'bottom', src: assetUrl('/assets/tutorial_press/press_bottom.png'), alt: 'Press bottom' },
+      { key: 'middle', src: assetUrl('/assets/tutorial_press/press_middle.png'), alt: 'Press plunger' },
+      { key: 'top', src: assetUrl('/assets/tutorial_press/press_top.png'), alt: 'Press top' }
     ] as const;
 
     layers.forEach((layer) => {

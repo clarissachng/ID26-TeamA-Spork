@@ -20,25 +20,44 @@ export class SensorZStrip {
   private el: HTMLElement;
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
+  private overlayImg?: HTMLImageElement;
   private trail: number[] = [];   // recent Z values
   private confirmed = false;
   private sensorHandler: ((e: Event) => void) | null = null;
 
-  constructor(parent: HTMLElement) {
+  constructor(parent: HTMLElement, overlayImgSrc?: string) {
     this.el = document.createElement('div');
     this.el.className = 'sensor-z-strip';
+    this.el.style.position = 'relative';
+    this.el.style.width = CANVAS_W + 'px';
+    this.el.style.height = CANVAS_H + 'px';
 
     this.canvas = document.createElement('canvas');
     this.canvas.width = CANVAS_W;
     this.canvas.height = CANVAS_H;
     this.canvas.className = 'sensor-z-strip__canvas';
-    this.canvas.style.width = CANVAS_W + 'px';
-    this.canvas.style.height = CANVAS_H + 'px';
+    this.canvas.style.position = 'absolute';
+    this.canvas.style.top = '0';
+    this.canvas.style.left = '0';
     this.ctx = this.canvas.getContext('2d')!;
 
     this.el.appendChild(this.canvas);
-    parent.appendChild(this.el);
 
+    if (overlayImgSrc) {
+      this.overlayImg = document.createElement('img');
+      this.overlayImg.src = overlayImgSrc;
+      this.overlayImg.alt = 'Motion Guide';
+      this.overlayImg.style.position = 'absolute';
+      this.overlayImg.style.top = '0';
+      this.overlayImg.style.left = '0';
+      this.overlayImg.style.width = CANVAS_W + 'px';
+      this.overlayImg.style.height = CANVAS_H + 'px';
+      this.overlayImg.style.pointerEvents = 'none';
+      this.overlayImg.style.zIndex = '2';
+      this.el.appendChild(this.overlayImg);
+    }
+
+    parent.appendChild(this.el);
     this.drawTrack();
   }
 

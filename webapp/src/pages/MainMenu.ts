@@ -15,6 +15,7 @@
  */
 import { router } from './router.ts';
 import { motionDetector } from '../components/MotionDetector.ts';
+import { assetUrl } from '../utils/asset.ts';
 
 export function createMainMenu(): HTMLElement {
   const page = document.createElement('div');
@@ -27,7 +28,7 @@ export function createMainMenu(): HTMLElement {
       <header class="menu-header">
         <div class="menu-logo-block" id="main-menu-logo" aria-label="While It Steeps logo">
           <img
-            src="/assets/logo.png"
+            src="${assetUrl('/assets/logo.png')}"
             alt="While It Steeps - motion brewing game logo"
             class="menu-logo-img"
             width="120"

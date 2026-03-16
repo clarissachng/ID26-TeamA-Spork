@@ -11,6 +11,10 @@
 | Gerard Chaba   | tl23383    |  Research, Writing, User Study, Software (Creating initial gameplay links)    |
 | Zakiya Yousuf  | hg23195    |  Research Lead, Writing, User Study    |
 
+## Teaching Assistants
+Lead TA: Oliver Child
+Assistant TA: Jack Burnett
+
 ## Project Description
 <!-- Our project is a motion-based interactive device that combines physical tea and coffee-making tools (such as a sieve, matcha whisk, and kettle) embedded with magnets and sensors to track player movements, which are then translated into a calming, <i>Cooking Mama</i> or <i>Just Dance</i> style video game. Players follow on-screen tutorials and progress through three levels of increasing difficulty, replicating sequences of motions to accurately fill a virtual cup, with a final creative level allowing them to record and repeat their own sequence. Designed to be both satisfying and therapeutic, the game aims to assist individuals in regaining specific motor skills while offering a relaxing, <i>A Little to the Left</i> style experience for casual home enjoyment. -->
 A "tea set" proxy to explore and understand daily rituals and habits, particularly understanding how a ritual is formed based on preconcepted understanding of objects (affordances of tea making tools), how it could be disrupted by asking a user to use a tool in an unconventional way/sequence, and how users feel about it. Research can look into how children play with objects in a nonsensical way, and how it might be harder for adults to be creative with how they use an object. 

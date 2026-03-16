@@ -1,6 +1,7 @@
 /**
  * Shared type definitions for the Motion Brewing Game.
  */
+import { assetUrl } from '../utils/asset.ts';
 
 /* ── Sensor Types ──────────────────────────────────────── */
 
@@ -69,9 +70,9 @@ export const ALL_MOTIONS: MotionType[] = ['grinding', 'up_down', 'press_down'];
 
 /** Human-friendly labels for each motion */
 export const MOTION_META: Record<MotionType, { label: string; asset: string; description: string; prop: string; arrow: string }> = {
-  grinding:   { label: 'Grind',     asset: '/assets/front_grinder.PNG', description: 'Rotate in a circular grinding motion', prop: 'Coffee Grinder', arrow: '/assets/motion_arrows/2.png' },
-  up_down:    { label: 'Dip',       asset: '/assets/front_tea.PNG',     description: 'Dip the tool up and down rhythmically', prop: 'Teabag',        arrow: '/assets/motion_arrows/3.png' },
-  press_down: { label: 'Press',     asset: '/assets/front_press.PNG',   description: 'Press the tool firmly downward',        prop: 'French Press',  arrow: '/assets/motion_arrows/1.png' },
+  grinding:   { label: 'Grind',     asset: assetUrl('/assets/front_grinder.PNG'), description: 'Rotate in a circular grinding motion', prop: 'Coffee Grinder', arrow: assetUrl('/assets/motion_arrows/2.png') },
+  up_down:    { label: 'Dip',       asset: assetUrl('/assets/front_tea.PNG'),     description: 'Dip the tool up and down rhythmically', prop: 'Teabag',        arrow: assetUrl('/assets/motion_arrows/3.png') },
+  press_down: { label: 'Press',     asset: assetUrl('/assets/front_press.PNG'),   description: 'Press the tool firmly downward',        prop: 'French Press',  arrow: assetUrl('/assets/motion_arrows/1.png') },
 };
 
 /* ── Level Definitions ─────────────────────────────────── */

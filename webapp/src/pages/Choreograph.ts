@@ -7,6 +7,7 @@
  */
 import { router } from './router.ts';
 import { MOTION_META, type MotionType, type RecordedStep, type SavedChoreography } from '../types/motion.types.ts';
+import { assetUrl } from '../utils/asset.ts';
 
 const STORAGE_KEY = 'spork_choreographies';
 const CHOREO_REPLAY_STORAGE_KEY = 'spork_choreo_replay';
@@ -114,7 +115,7 @@ export function createChoreograph(): HTMLElement {
               <p class="subtitle">What has been recorded so far.</p>
             </div>
             <div id="ch-capture-preview" class="ch-capture-preview">
-              <img id="ch-capture-tool-icon" class="ch-capture-tool-icon hidden" src="/assets/front_spork.png" alt="Scanned tool" />
+              <img id="ch-capture-tool-icon" class="ch-capture-tool-icon hidden" src="${assetUrl('/assets/front_spork.png')}" alt="Scanned tool" />
               <span id="ch-capture-tool-text">No tool scanned yet.</span>
             </div>
             <div id="ch-recorded-list" class="ch-recorded-list"></div>
@@ -203,7 +204,7 @@ export function createChoreograph(): HTMLElement {
 
     const img = document.createElement('img');
     img.className = 'ch-tool-visual__icon';
-    img.src = '/assets/front_spork.png';
+    img.src = assetUrl('/assets/front_spork.png');
     img.alt = 'Scanned tool';
 
     const label = document.createElement('span');
