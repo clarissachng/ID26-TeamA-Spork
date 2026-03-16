@@ -474,9 +474,10 @@
 
 /* ── Sensor XY Map ─────────────────────────────────────── */
 .sensor-xy-map {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: relative;
+  background: none !important;
+  width: 160px;
+  height: 160px;
 }
 
 .sensor-xy-map__canvas {
@@ -496,6 +497,9 @@
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.15);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  width: 160px !important;
+  height: 160px !important;
+  aspect-ratio: 1 / 1;
 }
 
 /* ── Tutorial Detail: radial flash overlay ─────────────── */

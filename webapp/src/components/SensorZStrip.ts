@@ -10,8 +10,9 @@
  */
 
 const TRAIL_LENGTH = 50;
-const CANVAS_W = 60;
-const CANVAS_H = 200;
+const CANVAS_SIZE = 160; 
+const CANVAS_W = CANVAS_SIZE;
+const CANVAS_H = CANVAS_SIZE;
 const DOT_RADIUS = 5;
 const TRAIL_WIDTH = 2.5;
 
@@ -31,6 +32,8 @@ export class SensorZStrip {
     this.canvas.width = CANVAS_W;
     this.canvas.height = CANVAS_H;
     this.canvas.className = 'sensor-z-strip__canvas';
+    this.canvas.style.width = CANVAS_W + 'px';
+    this.canvas.style.height = CANVAS_H + 'px';
     this.ctx = this.canvas.getContext('2d')!;
 
     this.el.appendChild(this.canvas);
