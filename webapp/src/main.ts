@@ -159,65 +159,62 @@ function init(): void {
   router.go('main-menu');
 
   // 5. Keyboard navigation for main menu (A/S keys)
-  function setupMainMenuKeyboardNav() {
-    const menuNavSelector = '#main-menu .menu-nav-btn';
-    let menuBtns: HTMLElement[] = [];
-    let focusedIdx = 0;
-
-    function updateMenuBtns() {
-      menuBtns = Array.from(document.querySelectorAll(menuNavSelector)) as HTMLElement[];
-    }
-
-    function focusBtn(idx: number) {
-      updateMenuBtns();
-      if (menuBtns.length === 0) return;
-      focusedIdx = ((idx % menuBtns.length) + menuBtns.length) % menuBtns.length;
-      menuBtns.forEach((btn, i) => {
-        if (i === focusedIdx) {
-          btn.focus();
-          // ...existing code...
-        } else {
-          // ...existing code...
-        }
+  function setupGlobalKeyboardNav() {
+    // Select all visible/selectable buttons in the active page
+    function getSelectableButtons(): HTMLElement[] {
+      // Only buttons that are visible and not disabled
+      const btns = Array.from(document.querySelectorAll('button, [role="button"]')) as HTMLElement[];
+      return btns.filter(btn => {
+        const style = window.getComputedStyle(btn);
+        return style.display !== 'none' && style.visibility !== 'hidden' && !btn.hasAttribute('disabled') && btn.offsetParent !== null;
       });
     }
 
-    // Focus Play by default when menu is shown
+    let focusedIdx = 0;
+
+    function focusBtn(idx: number) {
+      const btns = getSelectableButtons();
+      if (btns.length === 0) return;
+      focusedIdx = ((idx % btns.length) + btns.length) % btns.length;
+      btns[focusedIdx].focus();
+    }
+
     function tryAutoFocus() {
-      if (document.getElementById('main-menu')?.classList.contains('active')) {
-        updateMenuBtns();
-        focusBtn(0);
-      }
+      // Focus first button in the active page
+      setTimeout(() => {
+        const btns = getSelectableButtons();
+        if (btns.length > 0) {
+          focusedIdx = 0;
+          btns[0].focus();
+        }
+      }, 50);
     }
 
     // Listen for page changes to re-focus
-
-    router.onNavigate((_, to: string) => {
-      if (to === 'main-menu') {
-        setTimeout(tryAutoFocus, 50);
-      }
+    router.onNavigate((_, _to: string) => {
+      tryAutoFocus();
     });
 
     // Keydown handler
     document.addEventListener('keydown', (e) => {
-      if (!document.getElementById('main-menu')?.classList.contains('active')) return;
-      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
-      updateMenuBtns();
-      if (menuBtns.length === 0) return;
+      // Only handle if not typing in input/textarea
+      if (["INPUT", "TEXTAREA"].includes((e.target as HTMLElement)?.tagName)) return;
+      const btns = getSelectableButtons();
+      if (btns.length === 0) return;
       if (e.key === 'a' || e.key === 'A') {
         e.preventDefault();
         focusBtn(focusedIdx + 1);
       } else if (e.key === 's' || e.key === 'S') {
         e.preventDefault();
-        menuBtns[focusedIdx].click();
+        btns[focusedIdx].click();
       }
     });
 
-    // Initial focus if menu is already active
+    // Initial focus
     setTimeout(tryAutoFocus, 100);
   }
 
-  setupMainMenuKeyboardNav();
+  setupGlobalKeyboardNav();
 
   // 4. Connect WebSocket to Python backend
   motionDetector.connect();
