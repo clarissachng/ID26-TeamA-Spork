@@ -90,44 +90,48 @@ export class SensorZStrip {
     const h = CANVAS_H;
     const pad = 16;
     const usableH = h - pad * 2;
-    const centerX = w / 2;
 
     ctx.clearRect(0, 0, w, h);
     this.drawTrack();
 
-    if (this.trail.length < 1) return;
+    if (this.trail.length < 2) return;
 
     // Auto-scale Z to canvas: map range to [pad, h - pad]
     const maxAbs = this.trail.reduce((m, z) => Math.max(m, Math.abs(z)), 1);
     const toY = (z: number) => h / 2 - (z / maxAbs) * (usableH / 2);
 
     const trailColor = this.confirmed
-      ? 'rgba(100, 210, 80, 0.VAR)'
-      : 'rgba(180, 140, 100, 0.VAR)';
+      ? 'rgba(100, 210, 80, 0.7)'
+      : 'rgba(180, 140, 100, 0.7)';
     const dotColor = this.confirmed ? '#5ece4b' : '#8b6f47';
 
-    // Draw trail with fading opacity
-    for (let i = 1; i < this.trail.length; i++) {
-      const opacity = (i / this.trail.length) * 0.7 + 0.1;
-      ctx.beginPath();
-      ctx.moveTo(centerX, toY(this.trail[i - 1]));
-      ctx.lineTo(centerX, toY(this.trail[i]));
-      ctx.strokeStyle = trailColor.replace('VAR', opacity.toFixed(2));
-      ctx.lineWidth = TRAIL_WIDTH;
-      ctx.lineCap = 'round';
-      ctx.stroke();
+    // Draw scrolling line graph (left = oldest, right = newest)
+    ctx.beginPath();
+    for (let i = 0; i < this.trail.length; i++) {
+      const x = (i / (TRAIL_LENGTH - 1)) * (w - pad * 2) + pad;
+      const y = toY(this.trail[i]);
+      if (i === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
     }
+    ctx.strokeStyle = trailColor;
+    ctx.lineWidth = TRAIL_WIDTH;
+    ctx.lineCap = 'round';
+    ctx.stroke();
 
-    // Current position dot
+    // Current position dot (rightmost)
+    const lastX = ((this.trail.length - 1) / (TRAIL_LENGTH - 1)) * (w - pad * 2) + pad;
     const lastY = toY(this.trail[this.trail.length - 1]);
     ctx.beginPath();
-    ctx.arc(centerX, lastY, DOT_RADIUS, 0, Math.PI * 2);
+    ctx.arc(lastX, lastY, DOT_RADIUS, 0, Math.PI * 2);
     ctx.fillStyle = dotColor;
     ctx.fill();
 
     // Subtle glow around dot
     ctx.beginPath();
-    ctx.arc(centerX, lastY, DOT_RADIUS + 4, 0, Math.PI * 2);
+    ctx.arc(lastX, lastY, DOT_RADIUS + 4, 0, Math.PI * 2);
     ctx.fillStyle = this.confirmed
       ? 'rgba(100, 210, 80, 0.2)'
       : 'rgba(180, 140, 100, 0.15)';

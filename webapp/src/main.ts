@@ -161,8 +161,70 @@ function init(): void {
   document.addEventListener('click', startBgm);
   document.addEventListener('keydown', startBgm);
 
+
   // 3. Navigate to main menu
   router.go('main-menu');
+
+  // 5. Keyboard navigation for main menu (A/S keys)
+  function setupMainMenuKeyboardNav() {
+    const menuNavSelector = '#main-menu .menu-nav-btn';
+    let menuBtns: HTMLElement[] = [];
+    let focusedIdx = 0;
+
+    function updateMenuBtns() {
+      menuBtns = Array.from(document.querySelectorAll(menuNavSelector)) as HTMLElement[];
+    }
+
+    function focusBtn(idx: number) {
+      updateMenuBtns();
+      if (menuBtns.length === 0) return;
+      focusedIdx = ((idx % menuBtns.length) + menuBtns.length) % menuBtns.length;
+      menuBtns.forEach((btn, i) => {
+        if (i === focusedIdx) {
+          btn.focus();
+          btn.classList.add('joystick-focus');
+        } else {
+          btn.classList.remove('joystick-focus');
+        }
+      });
+    }
+
+    // Focus Play by default when menu is shown
+    function tryAutoFocus() {
+      if (document.getElementById('main-menu')?.classList.contains('active')) {
+        updateMenuBtns();
+        focusBtn(0);
+      }
+    }
+
+    // Listen for page changes to re-focus
+
+    router.onNavigate((_, to: string) => {
+      if (to === 'main-menu') {
+        setTimeout(tryAutoFocus, 50);
+      }
+    });
+
+    // Keydown handler
+    document.addEventListener('keydown', (e) => {
+      if (!document.getElementById('main-menu')?.classList.contains('active')) return;
+      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
+      updateMenuBtns();
+      if (menuBtns.length === 0) return;
+      if (e.key === 'a' || e.key === 'A') {
+        e.preventDefault();
+        focusBtn(focusedIdx + 1);
+      } else if (e.key === 's' || e.key === 'S') {
+        e.preventDefault();
+        menuBtns[focusedIdx].click();
+      }
+    });
+
+    // Initial focus if menu is already active
+    setTimeout(tryAutoFocus, 100);
+  }
+
+  setupMainMenuKeyboardNav();
 
   // 4. Connect WebSocket to Python backend
   motionDetector.connect();
