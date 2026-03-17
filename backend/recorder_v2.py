@@ -35,9 +35,11 @@ SAMPLE_RATE = 25  # Hz  (Arduino sends every 40ms)
 
 RECORD_DIR = Path(__file__).parent / "data"
 ALL_MOTIONS = [
+    "circular",
     "up_down",
+    "press_down",
 ]
-RECORDINGS_PER_MOTION = 1
+RECORDINGS_PER_MOTION = 5
 CALIBRATION_SECONDS = 2.0
 COUNTDOWN_SECONDS = 3.0
 RECORD_DURATION_SECONDS = 8.0
@@ -122,21 +124,32 @@ def record_session(port: str, baud_rate: int = BAUD_RATE):
 
     total_saved = 0
 
-    for motion in ALL_MOTIONS:
-        start_idx = 1
+    TOOLS = {
+        "044F7730C72A81": "Tongs",
+        "048C7630C72A81": "Kettle",
+        "049AA730C72A81": "Coffee Press",
+        "044BA230C72A81": "Coffee Grinder",
+        "04728F30C72A81": "Spork",
+        "0481AD30C72A81": "Sieve",
+        "049CA830C72A81": "Tea Bag",
+    }
 
-        print(f"\n  {'=' * 50}")
-        print(f"  MOTION: {motion.upper()}")
-        print(f"  Recording {RECORDINGS_PER_MOTION} samples (starting at #{start_idx})")
-        print(f"  {'=' * 50}")
-
-        for i in range(RECORDINGS_PER_MOTION):
-            rec_idx = start_idx + i
-            filename = f"{motion} {rec_idx}.csv"
-            filepath = RECORD_DIR / filename
-
-            print(f"\n  --- {filename} ({i + 1}/{RECORDINGS_PER_MOTION}) ---")
-            input("  Press ENTER when ready (hold sensor still)...")
+    for tool_uid, tool_name in TOOLS.items():
+        print(f"\n{'#' * 60}")
+        print(f"  TOOL: {tool_name} ({tool_uid})")
+        print(f"{'#' * 60}\n")
+        for motion in ALL_MOTIONS:
+            start_idx = 1
+            print(f"\n  {'=' * 50}")
+            print(f"  MOTION: {motion.upper()} (Tool: {tool_name})")
+            print(f"  Recording {RECORDINGS_PER_MOTION} samples (starting at #{start_idx})")
+            print(f"  {'=' * 50}")
+            for i in range(RECORDINGS_PER_MOTION):
+                rec_idx = start_idx + i
+                filename = f"{tool_name}_{motion}_{rec_idx}.csv"
+                filepath = RECORD_DIR / filename
+                print(f"\n  --- {filename} ({i + 1}/{RECORDINGS_PER_MOTION}) ---")
+                input("  Press ENTER when ready (hold sensor still)...")
 
             # Phase 1: Calibrate
             print(f"  [CALIBRATING] Hold still... ({CALIBRATION_SECONDS:.0f}s)")
