@@ -2,6 +2,8 @@
 
 [Overleaf link](https://www.overleaf.com/8275173374gyxfmgztxgqn#82d2b0")
 
+[Gameplay link](https://uob-interactive-devices.github.io/ID26-TeamA-Spork/)
+
 ## Team Member
 | Name           | Student ID | Role |
 |----------------|------------|------|
@@ -12,8 +14,9 @@
 | Zakiya Yousuf  | hg23195    |  Research Lead, Writing, User Study    |
 
 ## Teaching Assistants
-Lead TA: Oliver Child
-Assistant TA: Jack Burnett
+**Lead TA:** Oliver Child
+
+**Assistant TA:** Jack Burnett
 
 ## Project Description
 <!-- Our project is a motion-based interactive device that combines physical tea and coffee-making tools (such as a sieve, matcha whisk, and kettle) embedded with magnets and sensors to track player movements, which are then translated into a calming, <i>Cooking Mama</i> or <i>Just Dance</i> style video game. Players follow on-screen tutorials and progress through three levels of increasing difficulty, replicating sequences of motions to accurately fill a virtual cup, with a final creative level allowing them to record and repeat their own sequence. Designed to be both satisfying and therapeutic, the game aims to assist individuals in regaining specific motor skills while offering a relaxing, <i>A Little to the Left</i> style experience for casual home enjoyment. -->
