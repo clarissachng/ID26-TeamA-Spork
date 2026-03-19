@@ -1,128 +1,56 @@
 /**
- * MotionDetector component — WebSocket listener (Scored Protocol v2).
+ * MotionDetector.ts — WebSocket client for While It Steeps
+ * =========================================================
+ * Connects to ws://localhost:8765 (bridge_play.py or bridge_tutorial.py)
+ * and converts every incoming message into a CustomEvent on `document`.
  *
- * Connects to the Python backend at ws://localhost:8765.
+ * Message types received → CustomEvent name dispatched on document:
  *
- * NEW PROTOCOL:
- *   → Outgoing: {"expect": "circular"}  — sent before each motion step
- *   ← Incoming: {"score": 0.85, "motion": "circular", "passed": true}
+ *   sensor           → "sensor-data"        {x, y, z, mag, state}
+ *   prompt           → "motion-prompt"      {motion, tool, action, totalActions}
+ *   nfc              → "nfc-scan"           {uid, tool, valid}
+ *   nfc_wrong        → "nfc-wrong"          {scanned, expected}
+ *   countdown        → "countdown"          {seconds}
+ *   recording        → "recording"          {secondsRemaining}
+ *   result           → "motion-result"      {motion, tool, score, passed}
+ *   round_complete   → "round-complete"     {round, score, passed, actions}
+ *   tutorial_complete→ "tutorial-complete"  {}
+ *   knob             → "knob"               {delta?, click?}
  *
- * LEGACY COMPAT:
- *   ← Incoming: {"detected": true, "motion": "...", "confidence": 0.9}
- *   Both incoming shapes dispatch a "motion-detected" CustomEvent on document
- *   so Play.ts, TutorialDetail.ts etc. need no changes.
+ * Usage in any page/component:
+ *   document.addEventListener('motion-prompt', (e) => { ... })
+ *   document.addEventListener('motion-result', (e) => { ... })
  *
- * SENSOR DATA:
- *   ← Incoming: {"sensor": true, x, y, z, mag, state, phase_remaining, noise_floor}
- *   Dispatches "sensor-data" CustomEvent on document.
+ * To advance to the next round (Play page only):
+ *   motionDetector.sendReady()
  */
-import type { MotionDetectionMessage, MotionType } from '../types/motion.types.ts';
 
-// Backend motion names → frontend MotionType
-// (backend speaks "circular" / "teabag" / "up_down";
-//  frontend types are "grinding" / "up_down" / "press_down")
-const MOTION_MAP: Record<string, MotionType> = {
-  circular: 'grinding',
-  teabag:   'up_down',
-  up_down:  'press_down',
-  // pass-through if backend already uses frontend names
-  grinding:   'grinding',
-  press_down: 'press_down',
-};
-
-export type MotionCallback = (motion: MotionType, confidence: number) => void;
-
-class MotionDetectorWS {
+export class MotionDetectorWS {
   private ws: WebSocket | null = null;
   private url: string;
-  private listeners: MotionCallback[] = [];
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private _connected = false;
-
-  // The motion the frontend is currently expecting (set via expectMotion())
-  private _expectedMotion: string | null = null;
 
   constructor(url = 'ws://localhost:8765') {
     this.url = url;
   }
 
-  /** Whether the WebSocket is currently open */
-  get connected(): boolean {
-    return this._connected;
-  }
+  get connected(): boolean { return this._connected; }
 
-  /** Register a callback for motion detection events */
-  onMotion(cb: MotionCallback): void {
-    this.listeners.push(cb);
-  }
-
-  /** Remove a previously registered callback */
-  offMotion(cb: MotionCallback): void {
-    this.listeners = this.listeners.filter(l => l !== cb);
-  }
-
-  /**
-   * Tell the backend which motion to score next.
-   * Call this just before the player is prompted to perform a step.
-   *
-   * @param frontendMotion  The MotionType as used by the frontend
-   *                        e.g. "grinding", "up_down", "press_down"
-   */
-  expectMotion(frontendMotion: MotionType): void {
-    // Translate frontend name → backend name
-    const backendName = FRONTEND_TO_BACKEND[frontendMotion] ?? frontendMotion;
-    this._expectedMotion = backendName;
-
-    if (this._connected && this.ws?.readyState === WebSocket.OPEN) {
-      this._sendExpect(backendName);
-    } else {
-      // Will be sent once reconnected (see onopen handler)
-      console.log(`[WS] Will send expect="${backendName}" once connected`);
-    }
-  }
-
-  /** Open the WebSocket connection */
+  /** Call once from main.ts to open the connection. Auto-reconnects. */
   connect(): void {
     if (this.ws) return;
-
     try {
       this.ws = new WebSocket(this.url);
-
-      this.ws.onopen = () => {
-        this._connected = true;
-        console.log('🔌 WebSocket connected');
-        document.dispatchEvent(new CustomEvent('ws-status', { detail: { connected: true } }));
-
-        // If a motion was queued before connection was ready, send it now
-        if (this._expectedMotion) {
-          this._sendExpect(this._expectedMotion);
-        }
-      };
-
-      this.ws.onmessage = (ev: MessageEvent) => {
-        try {
-          const msg = JSON.parse(ev.data as string) as Record<string, unknown>;
-          this._handleMessage(msg);
-        } catch { /* ignore malformed messages */ }
-      };
-
-      this.ws.onclose = () => {
-        this._connected = false;
-        this.ws = null;
-        console.log('🔌 WebSocket disconnected — retrying in 3s');
-        document.dispatchEvent(new CustomEvent('ws-status', { detail: { connected: false } }));
-        this._scheduleReconnect();
-      };
-
-      this.ws.onerror = () => {
-        this.ws?.close();
-      };
+      this.ws.onopen    = () => this._onOpen();
+      this.ws.onmessage = (ev) => this._onMessage(ev);
+      this.ws.onclose   = () => this._onClose();
+      this.ws.onerror   = () => this.ws?.close();
     } catch {
       this._scheduleReconnect();
     }
   }
 
-  /** Close the connection */
   disconnect(): void {
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     this.ws?.close();
@@ -130,84 +58,31 @@ class MotionDetectorWS {
     this._connected = false;
   }
 
-  // ── Private helpers ──────────────────────────────────────────────────────
+  /** Tell the play bridge the player is ready for the next round */
+  sendReady(): void {
+    this._send({ ready: true });
+  }
 
-  private _sendExpect(backendMotion: string): void {
-    try {
-      this.ws!.send(JSON.stringify({ expect: backendMotion }));
-      console.log(`[WS] → expect="${backendMotion}"`);
-    } catch (e) {
-      console.warn('[WS] Failed to send expect:', e);
+  // ── Private helpers ───────────────────────────────────────────────────
+
+  private _send(msg: object): void {
+    if (this._connected && this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(msg));
     }
   }
 
-  private _handleMessage(msg: Record<string, unknown>): void {
-    // ── Sensor data (25 Hz heartbeat) ──────────────────────────────────────
-    if (msg.sensor) {
-      document.dispatchEvent(
-        new CustomEvent('sensor-data', {
-          detail: {
-            x:              msg.x              as number,
-            y:              msg.y              as number,
-            z:              msg.z              as number,
-            mag:            msg.mag            as number,
-            state:          msg.state          as string,
-            phaseRemaining: msg.phase_remaining as number,
-            noiseFloor:     msg.noise_floor    as number,
-          },
-        }),
-      );
-      return;
-    }
+  private _onOpen(): void {
+    this._connected = true;
+    console.log('[WS] Connected to bridge');
+    this._fire('ws-connected', {});
+  }
 
-    // ── Scored result (new protocol) ───────────────────────────────────────
-    // Shape: { score: number, motion: string, passed: boolean }
-    if (typeof msg.score === 'number' && typeof msg.motion === 'string') {
-      const backendMotion = msg.motion as string;
-      const frontendMotion = MOTION_MAP[backendMotion] ?? (backendMotion as MotionType);
-      const score  = msg.score  as number;
-      const passed = msg.passed as boolean;
-
-      console.log(
-        `[WS] ← score  motion="${backendMotion}" → "${frontendMotion}"`,
-        `score=${(score * 100).toFixed(0)}%  passed=${passed}`,
-      );
-
-      // Use score directly as "confidence" so Play.ts works unchanged
-      this.listeners.forEach(cb => cb(frontendMotion, score));
-      document.dispatchEvent(
-        new CustomEvent('motion-detected', {
-          detail: {
-            motion:     frontendMotion,
-            confidence: score,
-            passed,
-            score,
-          },
-        }),
-      );
-      return;
-    }
-
-    // ── Legacy detection event (old protocol / fallback) ───────────────────
-    // Shape: { detected: true, motion: string, confidence: number }
-    if (msg.detected) {
-      const det = msg as unknown as MotionDetectionMessage;
-      const backendMotion = det.motion as string;
-      const frontendMotion = MOTION_MAP[backendMotion] ?? (backendMotion as MotionType);
-      const confidence = det.confidence;
-
-      console.log(
-        `[WS] ← detected  motion="${backendMotion}" → "${frontendMotion}"`,
-        `confidence=${(confidence * 100).toFixed(0)}%`,
-      );
-
-      this.listeners.forEach(cb => cb(frontendMotion, confidence));
-      document.dispatchEvent(
-        new CustomEvent('motion-detected', {
-          detail: { motion: frontendMotion, confidence },
-        }),
-      );
-    }
+  private _onClose(): void {
+    this._connected = false;
+    this.ws = null;
+    console.log('[WS] Disconnected — retrying in 3 s');
+    this._fire('ws-disconnected', {});
+    this._scheduleReconnect();
   }
 
   private _scheduleReconnect(): void {
@@ -217,14 +92,114 @@ class MotionDetectorWS {
       this.connect();
     }, 3000);
   }
+
+  private _onMessage(ev: MessageEvent): void {
+    let msg: Record<string, unknown>;
+    try {
+      msg = JSON.parse(ev.data as string) as Record<string, unknown>;
+    } catch {
+      return;
+    }
+
+    const type = msg.type as string | undefined;
+
+    switch (type) {
+
+      case 'sensor':
+        this._fire('sensor-data', {
+          x:     msg.x   as number,
+          y:     msg.y   as number,
+          z:     msg.z   as number,
+          mag:   msg.mag as number,
+          state: msg.state as string,
+        });
+        break;
+
+      case 'prompt':
+        console.log(`[WS] prompt → motion="${msg.motion}"  tool="${msg.tool}"`);
+        this._fire('motion-prompt', {
+          motion:       msg.motion        as string,
+          tool:         msg.tool          as string,
+          action:       msg.action        as number,
+          totalActions: msg.total_actions as number,
+        });
+        break;
+
+      case 'nfc':
+        this._fire('nfc-scan', {
+          uid:   msg.uid   as string,
+          tool:  msg.tool  as string | null,
+          valid: msg.valid as boolean,
+        });
+        break;
+
+      case 'nfc_wrong':
+        this._fire('nfc-wrong', {
+          scanned:  msg.scanned  as string,
+          expected: msg.expected as string,
+        });
+        break;
+
+      case 'countdown':
+        this._fire('countdown', { seconds: msg.seconds as number });
+        break;
+
+      case 'recording':
+        this._fire('recording', {
+          secondsRemaining: msg.seconds_remaining as number,
+        });
+        break;
+
+      case 'result':
+        console.log(
+          `[WS] result → motion="${msg.motion}" score=${
+            ((msg.score as number) * 100).toFixed(0)
+          }% passed=${msg.passed}`,
+        );
+        this._fire('motion-result', {
+          motion: msg.motion as string,
+          tool:   msg.tool   as string,
+          score:  msg.score  as number,
+          passed: msg.passed as boolean,
+          detail: (msg.detail ?? {}) as object,
+        });
+        break;
+
+      case 'round_complete':
+        console.log(
+          `[WS] round_complete → round=${msg.round} score=${
+            ((msg.score as number) * 100).toFixed(0)
+          }% passed=${msg.passed}`,
+        );
+        this._fire('round-complete', {
+          round:   msg.round   as number,
+          score:   msg.score   as number,
+          passed:  msg.passed  as boolean,
+          actions: msg.actions as number,
+        });
+        break;
+
+      case 'tutorial_complete':
+        console.log('[WS] tutorial_complete');
+        this._fire('tutorial-complete', {});
+        break;
+
+      case 'knob':
+        this._fire('knob', {
+          delta: msg.delta as number | undefined,
+          click: msg.click as boolean | undefined,
+        });
+        break;
+
+      default:
+        break;
+    }
+  }
+
+  private _fire(eventName: string, detail: object): void {
+    document.dispatchEvent(new CustomEvent(eventName, { detail }));
+  }
 }
 
-// Frontend MotionType → backend motion name used in the Python detector
-const FRONTEND_TO_BACKEND: Partial<Record<MotionType, string>> = {
-  grinding:   'circular',
-  up_down:    'teabag',
-  press_down: 'up_down',
-};
-
-/** Singleton instance used across the entire app */
+/** Singleton — connect once from main.ts, use events everywhere else */
 export const motionDetector = new MotionDetectorWS();
