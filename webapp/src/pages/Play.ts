@@ -9,10 +9,12 @@
 import { router } from './router.ts';
 import { LEVELS, MOTION_META, type MotionType, type GameLevel, type SavedChoreography } from '../types/motion.types.ts';
 
+import { playBridge } from '../services/playBridge.ts';
 import { CupFill } from '../components/CupFill.ts';
 import { MotionPrompt } from '../components/MotionPrompt.ts';
 
 const CHOREO_REPLAY_STORAGE_KEY = 'spork_choreo_replay';
+const BACKEND_PROMPT_TIMEOUT_MS = 15000;
 
 type PlayStep = {
   motion: MotionType;
@@ -164,14 +166,40 @@ function startLevel(page: HTMLElement): void {
   const cup = new CupFill(cupArea);
   const prompt = new MotionPrompt(promptArea);
 
+  const useBackendRandom = !isChoreographyReplay;
+  playBridge.connect();
+  if (useBackendRandom) playBridge.clearPromptQueue();
+
   let currentStep = 0;
   let completedCorrect = 0;
   let score = 0;
   let motionHandler: ((e: Event) => void) | null = null;
   let scanHandler: ((e: Event) => void) | null = null;
   let keyHandler: ((e: KeyboardEvent) => void) | null = null;
+  let backendFailHandler: ((e: Event) => void) | null = null;
+  let backendNfcWrongHandler: ((e: Event) => void) | null = null;
   let timerInterval: ReturnType<typeof setInterval> | null = null;
   let timerRaf: number | null = null;
+
+  function applyBackendPromptToStep(stepIndex: number, motion: MotionType, tool?: string): void {
+    const step = runSteps[stepIndex];
+    if (!step) return;
+
+    step.motion = motion;
+    step.tool = tool;
+
+    const stamp = stamps[stepIndex];
+    if (!stamp) return;
+
+    const meta = MOTION_META[motion];
+    stamp.title = formatToolName(tool, meta.prop);
+
+    const img = stamp.querySelector('.play-stamp__asset') as HTMLImageElement | null;
+    if (img) {
+      img.src = meta.asset;
+      img.alt = meta.label;
+    }
+  }
 
   function updateVisualProgress(): void {
     dots.forEach((dot, i) => {
@@ -206,6 +234,8 @@ function startLevel(page: HTMLElement): void {
     if (motionHandler) { document.removeEventListener('motion-detected', motionHandler); motionHandler = null; }
     if (scanHandler) { document.removeEventListener('tool-scanned', scanHandler); scanHandler = null; }
     if (keyHandler) { document.removeEventListener('keydown', keyHandler); keyHandler = null; }
+    if (backendFailHandler) { document.removeEventListener('backend-motion-failed', backendFailHandler); backendFailHandler = null; }
+    if (backendNfcWrongHandler) { document.removeEventListener('backend-nfc-wrong', backendNfcWrongHandler); backendNfcWrongHandler = null; }
     if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
     if (timerRaf) { cancelAnimationFrame(timerRaf); timerRaf = null; }
     timerEl.textContent = '';
@@ -216,6 +246,7 @@ function startLevel(page: HTMLElement): void {
   /**
    * Phase 1 — Scan: show the component and ask the user to scan it.
    * Waits for an NFC `tool-scanned` event or a keypress fallback.
+   * When backend-driven, fetches the next prompt first before entering scan phase.
    */
   function advance(): void {
     if (currentStep >= runSteps.length) {
@@ -223,55 +254,73 @@ function startLevel(page: HTMLElement): void {
       return;
     }
 
-    const step = runSteps[currentStep];
-    const meta = MOTION_META[step.motion];
+    const stepIndex = currentStep;
+    const backendDriven = useBackendRandom && playBridge.isConnected();
 
-    // Show component prompt (hidden arrow for now)
-    prompt.show(step.motion);
-    arrowArea.innerHTML = '';
+    const beginScanPhase = (): void => {
+      if (stepIndex !== currentStep) return;
 
-    // Show scan instruction
-    scanPromptEl.classList.remove('hidden');
-    scanPromptEl.textContent = `Show your ${formatToolName(step.tool, meta.prop)} to Mr Spork`;
+      const step = runSteps[currentStep];
+      const meta = MOTION_META[step.motion];
 
-    // Listen for NFC scan
-    scanHandler = ((e: Event) => {
-      const detail = (e as CustomEvent).detail as { tool: string };
-      // Accept any scan for now; can validate tool type later
-      if (detail.tool) {
-        onScanComplete();
-      }
-    });
-    document.addEventListener('tool-scanned', scanHandler);
+      prompt.show(step.motion);
+      arrowArea.innerHTML = '';
 
-    // Keyboard fallback for scan phase (Space / Enter = simulate scan)
-    keyHandler = (e: KeyboardEvent) => {
-      if (!page.classList.contains('active')) return;
-      if (!resultArea.classList.contains('hidden')) return;
-      if (e.key === ' ' || e.key === 'Enter') {
-        e.preventDefault();
-        onScanComplete();
+      scanPromptEl.classList.remove('hidden');
+      scanPromptEl.textContent = `Show your ${formatToolName(step.tool, meta.prop)} to Mr Spork`;
+
+      scanHandler = ((e: Event) => {
+        const detail = (e as CustomEvent).detail as { tool?: string };
+        if (detail?.tool) onScanComplete();
+      });
+      document.addEventListener('tool-scanned', scanHandler);
+
+      if (backendDriven) {
+        backendNfcWrongHandler = () => flashWrongStamp();
+        document.addEventListener('backend-nfc-wrong', backendNfcWrongHandler);
+      } else {
+        keyHandler = (e: KeyboardEvent) => {
+          if (!page.classList.contains('active')) return;
+          if (!resultArea.classList.contains('hidden')) return;
+          if (e.key === ' ' || e.key === 'Enter') {
+            e.preventDefault();
+            onScanComplete();
+          }
+        };
+        document.addEventListener('keydown', keyHandler);
       }
     };
-    document.addEventListener('keydown', keyHandler);
+
+    if (backendDriven) {
+      scanPromptEl.classList.remove('hidden');
+      scanPromptEl.textContent = 'Waiting for backend prompt…';
+
+      void playBridge.nextPrompt(stepIndex + 1, BACKEND_PROMPT_TIMEOUT_MS).then((msg) => {
+        if (stepIndex !== currentStep) return;
+        if (msg) applyBackendPromptToStep(stepIndex, msg.motion, msg.tool);
+        beginScanPhase();
+      });
+      return;
+    }
+
+    beginScanPhase();
   }
 
   /**
    * Phase 2 — Motion: stamp is colourful, show the arrow, start timer.
    */
   function onScanComplete(): void {
-    // Clean up scan listeners
     if (scanHandler) { document.removeEventListener('tool-scanned', scanHandler); scanHandler = null; }
     if (keyHandler) { document.removeEventListener('keydown', keyHandler); keyHandler = null; }
+    if (backendNfcWrongHandler) { document.removeEventListener('backend-nfc-wrong', backendNfcWrongHandler); backendNfcWrongHandler = null; }
 
     const step = runSteps[currentStep];
     const meta = MOTION_META[step.motion];
+    const backendDriven = useBackendRandom && playBridge.isConnected();
 
-    // Update scan prompt to motion instruction
     scanPromptEl.classList.remove('hidden');
     scanPromptEl.textContent = 'Do the following motion!';
 
-    // Activate stamp (colourful) on scan
     if (currentStep < VISUAL_STAMP_COUNT) {
       const stamp = stamps[currentStep];
       stamp.classList.add('is-scanned');
@@ -281,62 +330,66 @@ function startLevel(page: HTMLElement): void {
       setTimeout(() => stamp.classList.remove('pop'), 320);
     }
 
-    // Now show the motion arrow
-    const arrowSrc = meta.arrow;
-    arrowArea.innerHTML = `<img class="play-arrow" src="${arrowSrc}" alt="${meta.label} motion" />`;
+    arrowArea.innerHTML = `<img class="play-arrow" src="${meta.arrow}" alt="${meta.label} motion" />`;
 
-    // Start countdown for the motion
-    prompt.startTimer(step.duration, () => {
-      // Timer expired — fail this step
-      prompt.markFail();
-      flashWrongStamp();
-      cleanupListeners();
-      currentStep++;
-      setTimeout(advance, 800);
-    });
+    if (!backendDriven) {
+      prompt.startTimer(step.duration, () => {
+        prompt.markFail();
+        flashWrongStamp();
+        cleanupListeners();
+        currentStep++;
+        setTimeout(advance, 800);
+      });
 
-    // Start bottom-left timer — sweeping ring (rAF) + inner colour change (interval)
-    if (timerInterval) clearInterval(timerInterval);
-    if (timerRaf) { cancelAnimationFrame(timerRaf); timerRaf = null; }
-    let remaining = step.duration;
-    const totalDuration = step.duration;
-    const startMs = performance.now();
-    const totalMs = totalDuration * 1000;
-    timerEl.textContent = String(remaining);
-    timerEl.dataset.state = 'high';
+      if (timerInterval) clearInterval(timerInterval);
+      if (timerRaf) { cancelAnimationFrame(timerRaf); timerRaf = null; }
+      let remaining = step.duration;
+      const totalDuration = step.duration;
+      const startMs = performance.now();
+      const totalMs = totalDuration * 1000;
+      timerEl.textContent = String(remaining);
+      timerEl.dataset.state = 'high';
 
-    // Smooth ring sweep via rAF
-    function animateTimer(): void {
-      const elapsed = performance.now() - startMs;
-      const fraction = Math.max(0, 1 - elapsed / totalMs);
-      timerEl.style.setProperty('--sweep', `${(fraction * 360).toFixed(1)}deg`);
-      if (fraction > 0) timerRaf = requestAnimationFrame(animateTimer);
-    }
-    timerRaf = requestAnimationFrame(animateTimer);
-
-    // Countdown text + inner colour state each second
-    timerInterval = setInterval(() => {
-      remaining--;
-      timerEl.textContent = remaining > 0 ? String(remaining) : '';
-
-      const pct = remaining / totalDuration;
-      if (pct > 0.4) timerEl.dataset.state = 'high';
-      else if (pct > 0.15) timerEl.dataset.state = 'medium';
-      else timerEl.dataset.state = 'low';
-
-      if (remaining <= 0) {
-        if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+      function animateTimer(): void {
+        const elapsed = performance.now() - startMs;
+        const fraction = Math.max(0, 1 - elapsed / totalMs);
+        timerEl.style.setProperty('--sweep', `${(fraction * 360).toFixed(1)}deg`);
+        if (fraction > 0) timerRaf = requestAnimationFrame(animateTimer);
       }
-    }, 1000);
+      timerRaf = requestAnimationFrame(animateTimer);
 
-    // Listen for matching motion
+      timerInterval = setInterval(() => {
+        remaining--;
+        timerEl.textContent = remaining > 0 ? String(remaining) : '';
+
+        const pct = remaining / totalDuration;
+        if (pct > 0.4) timerEl.dataset.state = 'high';
+        else if (pct > 0.15) timerEl.dataset.state = 'medium';
+        else timerEl.dataset.state = 'low';
+
+        if (remaining <= 0) {
+          if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+        }
+      }, 1000);
+    } else {
+      timerEl.textContent = '';
+      timerEl.style.removeProperty('--sweep');
+      timerEl.removeAttribute('data-state');
+
+      backendFailHandler = ((e: Event) => {
+        const detail = (e as CustomEvent).detail as { motion: MotionType };
+        if (detail.motion === step.motion) flashWrongStamp();
+      });
+      document.addEventListener('backend-motion-failed', backendFailHandler);
+    }
+
     motionHandler = ((e: Event) => {
       const detail = (e as CustomEvent).detail as { motion: MotionType; confidence: number };
 
       if (detail.motion === step.motion) {
-        prompt.stopTimer();
+        if (!backendDriven) prompt.stopTimer();
         prompt.markSuccess();
-        score += detail.confidence;
+        score += detail.confidence ?? 0;
 
         completedCorrect++;
         updateVisualProgress();
@@ -351,21 +404,22 @@ function startLevel(page: HTMLElement): void {
     });
     document.addEventListener('motion-detected', motionHandler);
 
-    // Keyboard fallback for motion phase (Space / Enter = simulate correct motion)
-    keyHandler = (e: KeyboardEvent) => {
-      if (!page.classList.contains('active')) return;
-      if (!resultArea.classList.contains('hidden')) return;
-      if (e.key === ' ' || e.key === 'Enter') {
-        e.preventDefault();
-        const synth = new CustomEvent('motion-detected', {
-          detail: { motion: step.motion, confidence: 1 },
-        });
-        document.dispatchEvent(synth);
-      } else if (e.key.length === 1) {
-        flashWrongStamp();
-      }
-    };
-    document.addEventListener('keydown', keyHandler);
+    if (!backendDriven) {
+      keyHandler = (e: KeyboardEvent) => {
+        if (!page.classList.contains('active')) return;
+        if (!resultArea.classList.contains('hidden')) return;
+        if (e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault();
+          const synth = new CustomEvent('motion-detected', {
+            detail: { motion: step.motion, confidence: 1 },
+          });
+          document.dispatchEvent(synth);
+        } else if (e.key.length === 1) {
+          flashWrongStamp();
+        }
+      };
+      document.addEventListener('keydown', keyHandler);
+    }
   }
 
   function finish(): void {
@@ -393,9 +447,11 @@ function startLevel(page: HTMLElement): void {
     if (nextLevel) {
       resultArea.querySelector('[data-action="next"]')!
         .addEventListener('click', () => {
+          playBridge.sendReady();
           router.go('play', { levelId: String(nextLevel.id) });
         });
     }
+
     resultArea.querySelector('[data-action="menu"]')!
       .addEventListener('click', () => {
         if (isChoreographyReplay) {
