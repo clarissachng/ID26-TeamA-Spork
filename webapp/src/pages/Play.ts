@@ -316,7 +316,7 @@ function startLevel(page: HTMLElement): void {
   // ── Shared: register motion handler + keyboard fallback ─────────────────
   // Called after countdown finishes (both backend and local paths).
 
-  function startMotionPhase(step: PlayStep, meta: typeof MOTION_META[MotionType], backendDriven: boolean): void {
+  function startMotionPhase(step: PlayStep, _meta: typeof MOTION_META[MotionType], backendDriven: boolean): void {
     motionHandler = ((e: Event) => {
       const detail = (e as CustomEvent).detail as { motion: MotionType; confidence: number };
       if (detail.motion === step.motion) {
