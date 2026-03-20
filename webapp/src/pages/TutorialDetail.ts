@@ -20,6 +20,7 @@ import { SensorXYMap } from '../components/SensorXYMap.ts';
 import { SensorZStrip } from '../components/SensorZStrip.ts';
 import { CountdownFlash } from '../components/CountdownFlash.ts';
 import { tutorialBridge } from '../services/tutorialBridge.ts';
+import { assetUrl } from '../utils/asset.ts';
 
 /** Tutorial order — matches the cards on the Tutorial page */
 const TUTORIAL_ORDER: MotionType[] = ['grinding', 'up_down', 'press_down'];
@@ -254,13 +255,13 @@ export function createTutorialDetail(): HTMLElement {
       const cupContainer = page.querySelector('#td-cup-container') as HTMLElement;
       cupContainer.innerHTML = '';
       if (motion === 'grinding') {
-        xyMap = new SensorXYMap(cupContainer, '/ID26-TeamA-Spork/assets/motion_arrows/circle.PNG', 0.65);
+        xyMap = new SensorXYMap(cupContainer, assetUrl('/assets/motion_arrows/circle.PNG'), 0.65);
         xyMap.startListening();
       } else if (motion === 'up_down') {
-        zStrip = new SensorZStrip(cupContainer, '/ID26-TeamA-Spork/assets/motion_arrows/up_down.PNG', 0.65);
+        zStrip = new SensorZStrip(cupContainer, assetUrl('/assets/motion_arrows/up_down.PNG'), 0.65);
         zStrip.startListening();
       } else if (motion === 'press_down') {
-        zStrip = new SensorZStrip(cupContainer, '/ID26-TeamA-Spork/assets/motion_arrows/press_down.PNG', 0.65);
+        zStrip = new SensorZStrip(cupContainer, assetUrl('/assets/motion_arrows/press_down.PNG'), 0.65);
         zStrip.startListening();
       } else {
         cup = new CupFill(cupContainer);
@@ -426,6 +427,9 @@ export function createTutorialDetail(): HTMLElement {
           scanPromptEl.textContent = `Do the ${MOTION_META[motion].label} motion!`;
           updateStatus(page, 'Do the motion now!', 'var(--accent-gold)');
 
+          // Remove scan keyHandler, register motion keyHandler
+          if (keyHandler) { document.removeEventListener('keydown', keyHandler); keyHandler = null; }
+
           motionHandler = createMotionListener(page, motion,
             (confidence) => {
               if (resolved) return;
@@ -457,7 +461,7 @@ export function createTutorialDetail(): HTMLElement {
           keyHandler = (e: KeyboardEvent) => {
             if (!page.classList.contains('active')) return;
             if (page.querySelector('#td-popup')!.classList.contains('hidden') === false) return;
-            if (e.key === ' ') {
+            if (e.key === 'Enter') {
               e.preventDefault();
               document.dispatchEvent(new CustomEvent('motion-detected', {
                 detail: { motion, confidence: 1 },
@@ -582,7 +586,6 @@ function createMotionListener(
       statusEl.style.color    = 'var(--accent-rose)';
       fillEl.style.width      = '20%';
       fillEl.style.background = 'var(--accent-rose)';
-      flashRadial(page, 'wrong');
       onWrongMotion?.();
     }
   };
