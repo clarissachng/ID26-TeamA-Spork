@@ -37,6 +37,7 @@ MOTION_COLORS = {
     "circular": "#e6194b",
     "up_down":  "#3cb44b",
     "whisk":    "#4363d8",
+    "press_down": "#ffe119",
 }
 
 
@@ -96,11 +97,18 @@ def group_recordings() -> dict[str, list[dict]]:
 
     for path in csv_files:
         filename = os.path.basename(path)
-        # Extract motion name: everything before the last space+number+.csv
-        match = re.match(r"^(.+?)\s+\d+\.csv$", filename)
-        if not match:
-            continue
-        motion = match.group(1)
+        # Support new naming: Tool_Motion_Index.csv
+        match = re.match(r"^([\w\s]+)_([\w]+)_\d+\.csv$", filename)
+        if match:
+            tool = match.group(1)
+            motion = match.group(2)
+        else:
+            # Fallback: old naming convention
+            match_old = re.match(r"^(.+?)\s+\d+\.csv$", filename)
+            if match_old:
+                motion = match_old.group(1)
+            else:
+                continue
         rec = load_and_preprocess(path)
         if rec:
             rec["filename"] = filename

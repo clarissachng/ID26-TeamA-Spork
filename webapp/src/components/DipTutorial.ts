@@ -5,11 +5,9 @@
  * to demonstrate the "dip" gesture (like dunking a teabag).
  *
  * States:
- *  - idle: gentle up-down bob hint
  *  - success: enthusiastic dip burst
  *  - wrong: shake
  */
-
 import { assetUrl } from '../utils/asset.ts';
 
 export class DipTutorial {
@@ -42,50 +40,19 @@ export class DipTutorial {
 
     scene.appendChild(this.teabag);
     scene.appendChild(this.cup);
-
     wrapper.appendChild(scene);
-
     this.el.appendChild(wrapper);
     parent.appendChild(this.el);
   }
 
-  /** Start idle animation and listen for motion events */
+  /** Start listening for motion events */
   start(): void {
-    this.startIdle();
-
+    this.teabag.style.animation = 'none';
     this.motionHandler = ((e: Event) => {
       const detail = (e as CustomEvent).detail as { motion: string; confidence: number };
-      if (detail.motion === 'up_down') {
-        this.triggerSuccess();
-      }
+      if (detail.motion === 'up_down') this.triggerSuccess();
     });
     document.addEventListener('motion-detected', this.motionHandler);
-  }
-
-  /** Idle loop: teabag hovers above cup with a gentle bobbing hint */
-  private startIdle(): void {
-    this.el.classList.remove('success', 'wrong');
-    this.teabag.style.animation = 'none';
-  }
-
-  /** Correct motion: teabag dips twice into cup, then returns to still state */
-  private triggerSuccess(): void {
-    this.el.classList.add('success');
-    this.teabag.style.animation = '';
-    void this.teabag.offsetWidth; // force reflow so re-trigger works
-    this.teabag.style.animation = 'dipSuccess 1.6s cubic-bezier(0.22, 1, 0.36, 1) forwards';
-
-    // Resume idle hover after the dip completes.
-    this.teabag.addEventListener('animationend', () => {
-      this.el.classList.remove('success');
-      this.teabag.style.animation = 'none';
-    }, { once: true });
-  }
-
-  /** Reset to still state */
-  reset(): void {
-    this.teabag.style.animation = 'none';
-    this.el.classList.remove('success', 'wrong');
   }
 
   /** Stop listening for motion events */
@@ -94,6 +61,39 @@ export class DipTutorial {
       document.removeEventListener('motion-detected', this.motionHandler);
       this.motionHandler = null;
     }
+  }
+
+  /** Correct motion: teabag dips into cup then returns to still */
+  triggerSuccess(): void {
+    // prevent leftover wrong-shake
+    this.el.classList.remove('wrong');
+    this.el.classList.remove('success');
+    void this.el.offsetWidth;
+    this.el.classList.add('success');
+
+    this.teabag.style.animation = 'dipSuccess 1s ease-out forwards';
+    this.teabag.addEventListener(
+      'animationend',
+      () => {
+        this.el.classList.remove('success');
+        this.teabag.style.animation = 'dipIdle 2.2s ease-in-out infinite';
+      },
+      { once: true }
+    );
+  }
+
+  /** Wrong motion: shake the container */
+  triggerWrong(): void {
+    this.el.classList.remove('wrong');
+    void this.el.offsetWidth;
+    this.el.classList.add('wrong');
+    setTimeout(() => this.el.classList.remove('wrong'), 450);
+  }
+
+  /** Reset to still state */
+  reset(): void {
+    this.teabag.style.animation = 'none';
+    this.el.classList.remove('success', 'wrong');
   }
 
   /** Remove from DOM and clean up */

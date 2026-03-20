@@ -3,7 +3,6 @@
  *
  * Shows three layered PNG assets stacked:
  *  - grinder_body.png (static base)
- *  - grinder_full.png (reference, hidden)
  *  - grinder_handle.png (rotating handle)
  *
  * States:
@@ -27,7 +26,6 @@ export class GrinderTutorial {
     this.container = document.createElement('div');
     this.container.className = 'grinder-container';
 
-    // Three layers: body (static), full (hidden reference), handle (rotating)
     const body = document.createElement('img');
     body.src = assetUrl('/assets/tutorial_grinder/grinder_body.png');
     body.alt = 'Grinder body';
@@ -43,7 +41,6 @@ export class GrinderTutorial {
     this.container.appendChild(body);
     this.container.appendChild(this.handle);
 
-    // Wrapper div for instruction and arrow
     const wrapper = document.createElement('div');
     wrapper.className = 'grinder-wrapper';
 
@@ -64,16 +61,11 @@ export class GrinderTutorial {
 
   /** Start listening for motion events */
   start(): void {
+    this.handle.style.animation = 'none';
     this.motionHandler = ((e: Event) => {
       const detail = (e as CustomEvent).detail as { motion: MotionType; confidence: number };
-
-      if (detail.motion === this.expectedMotion) {
-        this.triggerSuccess();
-      }
+      if (detail.motion === this.expectedMotion) this.triggerSuccess();
     });
-
-    // Start still — no animation until correct motion
-    this.handle.style.animation = 'none';
     document.addEventListener('motion-detected', this.motionHandler);
   }
 
@@ -85,18 +77,25 @@ export class GrinderTutorial {
     }
   }
 
-  /** Correct motion: fast spin, then reset to still for the next round */
-  private triggerSuccess(): void {
+  /** Correct motion: fast spin, then reset to still */
+  triggerSuccess(): void {
+    this.el.classList.remove('wrong');
     this.el.classList.add('success');
     this.handle.style.animation = '';
-    void this.handle.offsetWidth; // force reflow so re-trigger works
+    void this.handle.offsetWidth;
     this.handle.style.animation = 'grindSuccess 0.8s ease-out forwards';
-
-    // After the spin finishes, go back to still so it can animate again
     this.handle.addEventListener('animationend', () => {
       this.el.classList.remove('success');
       this.handle.style.animation = 'none';
     }, { once: true });
+  }
+
+  /** Wrong motion: shake the container */
+  triggerWrong(): void {
+    this.el.classList.remove('wrong');
+    void this.el.offsetWidth;
+    this.el.classList.add('wrong');
+    setTimeout(() => this.el.classList.remove('wrong'), 450);
   }
 
   /** Reset to still state */

@@ -198,6 +198,8 @@
   backdrop-filter: none;
   border: none;
   padding: var(--space-md) var(--space-lg);
+  padding-right: 2.5em;
+  padding-top: -1.5em;
 }
 
 #ch-record-section h3,
@@ -318,8 +320,8 @@
 }
 
 .ch-stage-card {
-  min-height: 220px;
-  padding: var(--space-lg);
+  min-height: 200px;
+  padding: var(--space-md);
   border-radius: var(--radius-lg);
   background: rgba(255, 248, 235, 0.42);
   border: none;
@@ -344,7 +346,7 @@
 }
 
 .ch-stage-card__visual {
-  min-height: 92px;
+  min-height: 50px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -378,7 +380,7 @@
 .ch-stage-card__caption {
   max-width: 28ch;
   color: var(--text-muted);
-  font-size: 0.95rem;
+  font-size: 0.75rem;
   line-height: 1.5;
 }
 
@@ -405,17 +407,18 @@
 }
 
 .ch-live-feed {
-  width: 100%;
-  min-height: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: var(--space-md);
-  border-radius: var(--radius-md);
-  background: rgba(255, 248, 235, 0.48);
-  color: var(--text-muted);
-  font-size: 1.05rem;
+    width: 100%;
+    min-height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: var(--space-lg) var(--space-md);
+    border-radius: var(--radius-md);
+    background: #fff8eb7a;
+    color: var(--text-muted);
+    font-size: 0.85em;
+    font-style: italic;
 }
 
 .ch-live-feed[data-state="active"] {

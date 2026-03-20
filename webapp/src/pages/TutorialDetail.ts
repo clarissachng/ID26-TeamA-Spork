@@ -2,9 +2,11 @@
  * TutorialDetail page — shows what motion to perform for a specific prop,
  * with a visual demonstration area and real-time sensor feedback.
  *
- * Special case: "grinding" motion uses the GrinderTutorial component.
+ * When bridge_tutorial.py is running (ws://localhost:8765):
+ *   - Backend drives the sequence: prompt → NFC scan → countdown → score → result
+ *   - Frontend listens for CustomEvents emitted by tutorialBridge
  *
- * Input: Arduino magnetometer when connected, keyboard fallback otherwise.
+ * Keyboard fallback (no backend):
  *   - Space / Enter = correct motion
  *   - Any other key  = wrong motion
  */
@@ -13,10 +15,11 @@ import { MOTION_META, type MotionType } from '../types/motion.types.ts';
 import { GrinderTutorial } from '../components/GrinderTutorial.ts';
 import { DipTutorial } from '../components/DipTutorial.ts';
 import { PressTutorial } from '../components/PressTutorial.ts';
-import { serial } from '../modules/serial.ts';
 import { CupFill } from '../components/CupFill.ts';
 import { SensorXYMap } from '../components/SensorXYMap.ts';
 import { SensorZStrip } from '../components/SensorZStrip.ts';
+import { CountdownFlash } from '../components/CountdownFlash.ts';
+import { tutorialBridge } from '../services/tutorialBridge.ts';
 
 /** Tutorial order — matches the cards on the Tutorial page */
 const TUTORIAL_ORDER: MotionType[] = ['grinding', 'up_down', 'press_down'];
@@ -37,10 +40,10 @@ export function createTutorialDetail(): HTMLElement {
       <p id="td-label" class="subtitle"></p>
       <p id="td-desc"></p>
 
-      <!-- Special grinder demo for circle motion -->
+      <!-- Tutorial animation component mounts here -->
       <div id="td-grinder-container"></div>
 
-      <!-- Visual demonstration placeholder for other motions -->
+      <!-- Visual demonstration placeholder for unknown motions -->
       <div id="td-demo" class="tutorial-demo-area" style="
         width: 100%;
         height: 180px;
@@ -81,9 +84,15 @@ export function createTutorialDetail(): HTMLElement {
           "></div>
         </div>
       </div>
+
+      <!-- Backend scan instruction -->
+      <div id="td-scan-prompt" class="play-scan-prompt hidden"></div>
     </div>
 
-    <!-- Sensor-reactive cup -->
+    <!-- 8-second motion timer — same sweep ring as play page -->
+    <div class="play-timer" id="td-timer"></div>
+
+    <!-- Sensor-reactive visualiser -->
     <div id="td-cup-container" class="td-cup-container"></div>
 
     <!-- Radial flash overlay (success / wrong) -->
@@ -119,37 +128,129 @@ export function createTutorialDetail(): HTMLElement {
     .addEventListener('click', () => handleNext(page));
 
   /* ── State ── */
-  let motionHandler: ((e: Event) => void) | null = null;
-  let keyHandler: ((e: KeyboardEvent) => void) | null = null;
-  let grinder: GrinderTutorial | null = null;
-  let dipTut: DipTutorial | null = null;
-  let pressTut: PressTutorial | null = null;
-  let cup: CupFill | null = null;
-  let xyMap: SensorXYMap | null = null;
-  let zStrip: SensorZStrip | null = null;
-  let resolved = false; // whether the round already succeeded
-  let successCount = 0;  // number of successful motions (need 2 to pass)
+  let motionHandler:           ((e: Event) => void) | null = null;
+  let keyHandler:              ((e: KeyboardEvent) => void) | null = null;
+  let promptHandler:           ((e: Event) => void) | null = null;
+  let countdownHandler:        ((e: Event) => void) | null = null;
+  let nfcWrongHandler:         ((e: Event) => void) | null = null;
+  let motionFailedHandler:     ((e: Event) => void) | null = null;
+  let tutorialCompleteHandler: ((e: Event) => void) | null = null;
+
+  let grinder:  GrinderTutorial | null = null;
+  let dipTut:   DipTutorial     | null = null;
+  let pressTut: PressTutorial   | null = null;
+  let cup:      CupFill         | null = null;
+  let xyMap:    SensorXYMap     | null = null;
+  let zStrip:   SensorZStrip    | null = null;
+
+  let timerInterval: ReturnType<typeof setInterval> | null = null;
+  let timerRaf:      number | null = null;
+  const countdownFlash = new CountdownFlash(page);
+
+  let resolved      = false;
+  let successCount  = 0;
   let lastSuccessAt = 0;
-  const SUCCESS_STEP = 1;
+  const SUCCESS_STEP        = 1;
   const SUCCESS_DEBOUNCE_MS = 600;
-  const REQUIRED_SUCCESSES = 2;
+  const REQUIRED_SUCCESSES  = 2;
+
+  // Gate backend flow per page:
+  // countdown/result events are ignored until this page gets its own prompt.
+  let hasMatchingPrompt = false;
+
+  // ── Animation helpers — now just direct method calls ──────────────────────
+
+  function triggerSuccess(): void {
+    grinder?.triggerSuccess();
+    dipTut?.triggerSuccess();
+    pressTut?.triggerSuccess();
+  }
+
+  function triggerWrong(): void {
+    flashRadial(page, 'wrong');
+    grinder?.triggerWrong();
+    dipTut?.triggerWrong();
+    pressTut?.triggerWrong();
+  }
+
+  // ── Listener cleanup ──────────────────────────────────────────────────────
+
+  function cleanupListeners(): void {
+    if (motionHandler)           { document.removeEventListener('motion-detected',       motionHandler);           motionHandler = null; }
+    if (keyHandler)              { document.removeEventListener('keydown',                keyHandler);              keyHandler = null; }
+    if (promptHandler)           { document.removeEventListener('tutorial-prompt',        promptHandler);           promptHandler = null; }
+    if (countdownHandler)        { document.removeEventListener('tutorial-countdown',     countdownHandler);        countdownHandler = null; }
+    if (nfcWrongHandler)         { document.removeEventListener('tutorial-nfc-wrong',     nfcWrongHandler);         nfcWrongHandler = null; }
+    if (motionFailedHandler)     { document.removeEventListener('tutorial-motion-failed', motionFailedHandler);     motionFailedHandler = null; }
+    if (tutorialCompleteHandler) { document.removeEventListener('tutorial-complete',      tutorialCompleteHandler); tutorialCompleteHandler = null; }
+    stopMotionTimer();
+  }
+
+  function stopMotionTimer(): void {
+    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+    if (timerRaf)      { cancelAnimationFrame(timerRaf); timerRaf = null; }
+    const timerEl = page.querySelector('#td-timer') as HTMLElement | null;
+    if (timerEl) {
+      timerEl.textContent = '';
+      timerEl.style.removeProperty('--sweep');
+      timerEl.removeAttribute('data-state');
+    }
+  }
+
+  /** Start the 8-second sweep ring timer. Calls onExpire when time runs out. */
+  function startMotionTimer(duration: number, onExpire: () => void): void {
+    stopMotionTimer();
+    const timerEl = page.querySelector('#td-timer') as HTMLElement | null;
+    if (!timerEl) return;
+
+    let remaining     = duration;
+    const totalMs     = duration * 1000;
+    const startMs     = performance.now();
+    timerEl.textContent   = String(remaining);
+    timerEl.dataset.state = 'high';
+
+    function animateTimer(): void {
+      const elapsed  = performance.now() - startMs;
+      const fraction = Math.max(0, 1 - elapsed / totalMs);
+      timerEl!.style.setProperty('--sweep', `${(fraction * 360).toFixed(1)}deg`);
+      if (fraction > 0) timerRaf = requestAnimationFrame(animateTimer);
+    }
+    timerRaf = requestAnimationFrame(animateTimer);
+
+    timerInterval = setInterval(() => {
+      remaining--;
+      if (remaining > 0) {
+        timerEl.textContent   = String(remaining);
+        const pct = remaining / duration;
+        timerEl.dataset.state = pct > 0.4 ? 'high' : pct > 0.15 ? 'medium' : 'low';
+      } else {
+        timerEl.textContent = '';
+        clearInterval(timerInterval!);
+        timerInterval = null;
+        onExpire();
+      }
+    }, 1000);
+  }
 
   /* ── Activate / deactivate ── */
   const observer = new MutationObserver(() => {
     if (page.classList.contains('active')) {
-      resolved = false;
-      successCount = 0;
+      resolved      = false;
+      successCount  = 0;
       lastSuccessAt = 0;
+      hasMatchingPrompt = false;
       hidePopup(page);
       updateCounter(page, 0, REQUIRED_SUCCESSES);
 
       const motion = (page.dataset.motion ?? 'grinding') as MotionType;
       setupDetail(page, motion);
 
-      // Clean previous tutorial component HTML
+      // Tear down previous component
       (page.querySelector('#td-grinder-container') as HTMLElement).innerHTML = '';
+      grinder = dipTut = pressTut = null;
+      cup = xyMap = zStrip = null;
 
-      // Set up sensor feedback per motion type
+      // Sensor visualiser
       const cupContainer = page.querySelector('#td-cup-container') as HTMLElement;
       cupContainer.innerHTML = '';
       if (motion === 'grinding') {
@@ -166,110 +267,265 @@ export function createTutorialDetail(): HTMLElement {
         cup.startListening();
       }
 
+      // Tutorial animation component
       const container = page.querySelector('#td-grinder-container') as HTMLElement;
+      const demoEl    = page.querySelector('#td-demo')     as HTMLElement;
+      const feedbackEl = page.querySelector('#td-feedback') as HTMLElement;
 
       if (motion === 'grinding') {
         grinder = new GrinderTutorial(container);
+        // start() registers the internal motion-detected listener for self-driven
+        // mode; TutorialDetail also calls triggerSuccess/Wrong directly as needed.
         grinder.start();
-        (page.querySelector('#td-demo') as HTMLElement).style.display = 'none';
-        (page.querySelector('#td-feedback') as HTMLElement).style.display = 'none';
+        demoEl.style.display    = 'none';
+        feedbackEl.style.display = 'none';
       } else if (motion === 'up_down') {
         dipTut = new DipTutorial(container);
         dipTut.start();
-        (page.querySelector('#td-demo') as HTMLElement).style.display = 'none';
-        (page.querySelector('#td-feedback') as HTMLElement).style.display = 'none';
+        demoEl.style.display    = 'none';
+        feedbackEl.style.display = 'none';
       } else if (motion === 'press_down') {
         pressTut = new PressTutorial(container);
         pressTut.start();
-        (page.querySelector('#td-demo') as HTMLElement).style.display = 'none';
-        (page.querySelector('#td-feedback') as HTMLElement).style.display = 'none';
+        demoEl.style.display    = 'none';
+        feedbackEl.style.display = 'none';
       } else {
-        (page.querySelector('#td-demo') as HTMLElement).style.display = 'flex';
-        (page.querySelector('#td-feedback') as HTMLElement).style.display = 'flex';
+        demoEl.style.display    = 'flex';
+        feedbackEl.style.display = 'flex';
       }
 
-      // Arduino path
-      if (serial.isConnected) {
-        motionHandler = createMotionListener(page, motion, (confidence: number) => {
-          if (!resolved) {
+      const resetFeedbackVisuals = (): void => {
+        setTimeout(() => { cup?.reset(); xyMap?.reset(); zStrip?.reset(); }, 500);
+      };
+
+      // ── Wire backend or keyboard ─────────────────────────────────────────
+      tutorialBridge.connect();
+      const scanPromptEl = page.querySelector('#td-scan-prompt') as HTMLElement;
+
+      if (tutorialBridge.isConnected()) {
+        // ── Backend path ───────────────────────────────────────────────────
+
+        promptHandler = ((e: Event) => {
+          const detail = (e as CustomEvent).detail as {
+            motion: MotionType; tool: string; action: number; totalActions: number;
+          };
+          if (detail.motion !== motion) return;
+
+          hasMatchingPrompt = true; // unlock countdown handling for this page
+          stopMotionTimer();
+
+          scanPromptEl.classList.remove('hidden');
+          scanPromptEl.textContent = `Show your ${detail.tool} to Mr Spork`;
+          updateStatus(page, 'Waiting for NFC scan…', 'var(--text-muted)');
+        });
+        document.addEventListener('tutorial-prompt', promptHandler);
+
+        countdownHandler = ((e: Event) => {
+          // Ignore stray countdowns from other tutorial steps/pages
+          if (!hasMatchingPrompt) return;
+
+          const detail = (e as CustomEvent).detail as { seconds: number };
+          scanPromptEl.classList.remove('hidden');
+          scanPromptEl.textContent =
+            detail.seconds > 0 ? `Get ready… ${detail.seconds}` : 'Do the motion now!';
+
+          if (detail.seconds <= 1) {
+            updateStatus(page, 'Do the motion now!', 'var(--accent-gold)');
+          }
+
+          if (detail.seconds === 0) {
+            startMotionTimer(8, () => {
+              stopMotionTimer();
+              flashRadial(page, 'wrong');
+              triggerWrong();
+              resetFeedbackVisuals();
+            });
+          }
+        });
+        document.addEventListener('tutorial-countdown', countdownHandler);
+
+        nfcWrongHandler = (() => {
+          if (!hasMatchingPrompt) return;
+          scanPromptEl.classList.remove('hidden');
+          scanPromptEl.textContent = 'Wrong tool — try again!';
+          flashRadial(page, 'wrong');
+          triggerWrong();
+          resetFeedbackVisuals();
+        });
+        document.addEventListener('tutorial-nfc-wrong', nfcWrongHandler);
+
+        motionFailedHandler = (() => {
+          if (!hasMatchingPrompt) return;
+          stopMotionTimer();
+          scanPromptEl.classList.add('hidden');
+          updateStatus(page, 'Not quite — try again!', 'var(--accent-rose)');
+          flashRadial(page, 'wrong');
+          triggerWrong();
+          resetFeedbackVisuals();
+        });
+        document.addEventListener('tutorial-motion-failed', motionFailedHandler);
+
+        // motion-detected is emitted by tutorialBridge when result.passed === true
+        motionHandler = createMotionListener(page, motion,
+          (confidence) => {
+            if (resolved) return;
             const now = Date.now();
             if (now - lastSuccessAt < SUCCESS_DEBOUNCE_MS) return;
             lastSuccessAt = now;
 
+            stopMotionTimer();
+            scanPromptEl.classList.add('hidden');
+            triggerSuccess();
             cup?.confirmFill(confidence);
             xyMap?.confirm();
             zStrip?.confirm();
             successCount = Math.min(REQUIRED_SUCCESSES, successCount + SUCCESS_STEP);
             updateCounter(page, successCount, REQUIRED_SUCCESSES);
+
             if (successCount >= REQUIRED_SUCCESSES) {
               resolved = true;
               onSuccess(page);
             } else {
-              // Reset sensor viz back to sensing for the next attempt
               setTimeout(() => { cup?.reset(); xyMap?.reset(); zStrip?.reset(); }, 1200);
               flashRadial(page, 'success');
             }
-          }
-        });
+          },
+          () => { triggerWrong(); resetFeedbackVisuals(); },
+        );
         document.addEventListener('motion-detected', motionHandler);
-      }
 
-      // Keyboard fallback (always active so devs can test without hardware)
-      keyHandler = (e: KeyboardEvent) => {
-        if (!page.classList.contains('active')) return;
-        // Ignore if popup is showing
-        if (!page.querySelector('#td-popup')!.classList.contains('hidden')) return;
-        if (e.key === ' ' || e.key === 'Enter') {
-          e.preventDefault();
-          // Dispatch motion-detected so tutorial components (Grinder etc.) react
-          document.dispatchEvent(new CustomEvent('motion-detected', {
-            detail: { motion, confidence: 1 },
-          }));
-          // Only count here if no Arduino motionHandler (it would double-count)
-          if (!motionHandler && !resolved) {
-            const now = Date.now();
-            if (now - lastSuccessAt < SUCCESS_DEBOUNCE_MS) return;
-            lastSuccessAt = now;
-
-            cup?.confirmFill(1);
-            xyMap?.confirm();
-            zStrip?.confirm();
-            successCount = Math.min(REQUIRED_SUCCESSES, successCount + SUCCESS_STEP);
-            updateCounter(page, successCount, REQUIRED_SUCCESSES);
-            if (successCount >= REQUIRED_SUCCESSES) {
-              resolved = true;
-              onSuccess(page);
-            } else {
-              setTimeout(() => { cup?.reset(); xyMap?.reset(); zStrip?.reset(); }, 1200);
-              flashRadial(page, 'success');
-            }
-          }
-        } else if (e.key.length === 1) {
-          // Any printable key = wrong — dispatch a mismatched motion
-          document.dispatchEvent(new CustomEvent('motion-detected', {
-            detail: { motion: 'unknown', confidence: 0 },
-          }));
-          if (!motionHandler) onWrong(page);
+        // tutorial-complete fires after all 3 steps — only relevant on last step
+        if (motion === TUTORIAL_ORDER[TUTORIAL_ORDER.length - 1]) {
+          tutorialCompleteHandler = (() => {
+            if (resolved) return;
+            resolved = true;
+            triggerSuccess();
+            onSuccess(page);
+          });
+          document.addEventListener('tutorial-complete', tutorialCompleteHandler);
         }
-      };
-      document.addEventListener('keydown', keyHandler);
+
+      } else {
+        // ── Keyboard fallback ──────────────────────────────────────────────
+        // Flow: Space = simulate NFC scan → 3-2-1 countdown flash →
+        //       8s motion timer → Space = correct, any key = wrong
+
+        let scanDone = false;
+
+        // Phase 1: show scan prompt, wait for Space to simulate NFC
+        scanPromptEl.classList.remove('hidden');
+        scanPromptEl.textContent = `Show your ${MOTION_META[motion].prop} to Mr Spork`;
+
+        const enterMotionPhase = (): void => {
+          // Phase 3: 8-second motion window — register handlers + start timer
+          // Always clean up any stale handlers before registering new ones
+          if (motionHandler) { document.removeEventListener('motion-detected', motionHandler); motionHandler = null; }
+          if (keyHandler)    { document.removeEventListener('keydown', keyHandler);             keyHandler = null; }
+
+          scanPromptEl.classList.remove('hidden');
+          scanPromptEl.textContent = `Do the ${MOTION_META[motion].label} motion!`;
+          updateStatus(page, 'Do the motion now!', 'var(--accent-gold)');
+
+          motionHandler = createMotionListener(page, motion,
+            (confidence) => {
+              if (resolved) return;
+              const now = Date.now();
+              if (now - lastSuccessAt < SUCCESS_DEBOUNCE_MS) return;
+              lastSuccessAt = now;
+              stopMotionTimer();
+              triggerSuccess();
+              cup?.confirmFill(confidence);
+              xyMap?.confirm();
+              zStrip?.confirm();
+              successCount = Math.min(REQUIRED_SUCCESSES, successCount + SUCCESS_STEP);
+              updateCounter(page, successCount, REQUIRED_SUCCESSES);
+              if (successCount >= REQUIRED_SUCCESSES) {
+                resolved = true;
+                onSuccess(page);
+              } else {
+                flashRadial(page, 'success');
+                setTimeout(() => {
+                  cup?.reset(); xyMap?.reset(); zStrip?.reset();
+                  if (!resolved) enterMotionPhase(); // restart motion window
+                }, 1200);
+              }
+            },
+            () => { triggerWrong(); resetFeedbackVisuals(); },
+          );
+          document.addEventListener('motion-detected', motionHandler);
+
+          keyHandler = (e: KeyboardEvent) => {
+            if (!page.classList.contains('active')) return;
+            if (page.querySelector('#td-popup')!.classList.contains('hidden') === false) return;
+            if (e.key === ' ') {
+              e.preventDefault();
+              document.dispatchEvent(new CustomEvent('motion-detected', {
+                detail: { motion, confidence: 1 },
+              }));
+            } else if (e.key.length === 1) {
+              triggerWrong();
+              resetFeedbackVisuals();
+            }
+          };
+          document.addEventListener('keydown', keyHandler);
+
+          // 8-second timer — on expire treat as fail, restart motion phase
+          startMotionTimer(8, () => {
+            if (resolved) return;
+            flashRadial(page, 'wrong');
+            triggerWrong();
+            resetFeedbackVisuals();
+            setTimeout(() => {
+              if (!resolved) enterMotionPhase();
+            }, 800);
+          });
+        };
+
+        const startCountdown = (): void => {
+          // Phase 2: 3-2-1 countdown flash, then enter motion phase
+          // Clean up all active handlers — nothing should fire during countdown
+          if (motionHandler) { document.removeEventListener('motion-detected', motionHandler); motionHandler = null; }
+          if (keyHandler)    { document.removeEventListener('keydown', keyHandler);             keyHandler = null; }
+          scanPromptEl.textContent = 'Get ready… 3';
+          let count = 3;
+          countdownFlash?.flash(count);
+
+          const countInterval = setInterval(() => {
+            count--;
+            if (count > 0) {
+              scanPromptEl.textContent = `Get ready… ${count}`;
+              countdownFlash?.flash(count);
+            } else {
+              clearInterval(countInterval);
+              countdownFlash?.hide();
+              enterMotionPhase();
+            }
+          }, 1000);
+        };
+
+        // Phase 1 keyHandler: Space = simulate NFC scan
+        keyHandler = (e: KeyboardEvent) => {
+          if (!page.classList.contains('active')) return;
+          if (page.querySelector('#td-popup')!.classList.contains('hidden') === false) return;
+          if (e.key === ' ' && !scanDone) {
+            e.preventDefault();
+            scanDone = true;
+            startCountdown();
+          }
+        };
+        document.addEventListener('keydown', keyHandler);
+      }
 
     } else {
-      // Leaving page — clean up
-      if (motionHandler) {
-        document.removeEventListener('motion-detected', motionHandler);
-        motionHandler = null;
-      }
-      if (keyHandler) {
-        document.removeEventListener('keydown', keyHandler);
-        keyHandler = null;
-      }
-      if (grinder) { grinder.destroy(); grinder = null; }
-      if (dipTut) { dipTut.destroy(); dipTut = null; }
+      // Leaving page — clean up everything
+      cleanupListeners(); // already calls stopMotionTimer()
+      countdownFlash.hide();
+      if (grinder)  { grinder.destroy();  grinder  = null; }
+      if (dipTut)   { dipTut.destroy();   dipTut   = null; }
       if (pressTut) { pressTut.destroy(); pressTut = null; }
-      if (cup) { cup.destroy(); cup = null; }
-      if (xyMap) { xyMap.destroy(); xyMap = null; }
-      if (zStrip) { zStrip.destroy(); zStrip = null; }
+      if (cup)      { cup.destroy();      cup      = null; }
+      if (xyMap)    { xyMap.destroy();    xyMap    = null; }
+      if (zStrip)   { zStrip.destroy();   zStrip   = null; }
     }
   });
   observer.observe(page, { attributes: true, attributeFilter: ['class'] });
@@ -277,60 +533,67 @@ export function createTutorialDetail(): HTMLElement {
   return page;
 }
 
-/* ── Helpers ────────────────────────────────────────────── */
+/* ── Helpers ─────────────────────────────────────────────────────────────── */
 
 function setupDetail(page: HTMLElement, motion: MotionType): void {
   const meta = MOTION_META[motion];
   (page.querySelector('#td-emoji') as HTMLElement).innerHTML =
     `<img class="tutorial-detail__asset" src="${meta.asset}" alt="${meta.label}" />`;
-  (page.querySelector('#td-prop') as HTMLElement).textContent = meta.prop;
-  (page.querySelector('#td-label') as HTMLElement).textContent = meta.label;
-  (page.querySelector('#td-desc') as HTMLElement).textContent = meta.description;
-  (page.querySelector('#td-status') as HTMLElement).textContent = 'Waiting for motion…';
-  (page.querySelector('#td-status') as HTMLElement).style.color = 'var(--text-muted)';
+  (page.querySelector('#td-prop') as HTMLElement).textContent      = meta.prop;
+  (page.querySelector('#td-label') as HTMLElement).textContent     = meta.label;
+  (page.querySelector('#td-desc') as HTMLElement).textContent      = meta.description;
+  (page.querySelector('#td-status') as HTMLElement).textContent    = 'Waiting for motion…';
+  (page.querySelector('#td-status') as HTMLElement).style.color    = 'var(--text-muted)';
   (page.querySelector('#td-confidence-fill') as HTMLElement).style.width = '0%';
   (page.querySelector('#td-demo-text') as HTMLElement).textContent = 'Perform the motion to see feedback';
+}
+
+function updateStatus(page: HTMLElement, text: string, color: string): void {
+  const el = page.querySelector('#td-status') as HTMLElement;
+  el.textContent = text;
+  el.style.color = color;
 }
 
 function createMotionListener(
   page: HTMLElement,
   expectedMotion: MotionType,
-  onCorrect: (confidence: number) => void
+  onCorrect: (confidence: number) => void,
+  onWrongMotion?: () => void,
 ) {
   return (e: Event) => {
     const { motion, confidence } = (e as CustomEvent).detail as {
-      motion: MotionType;
-      confidence: number;
+      motion: MotionType; confidence: number;
     };
     const statusEl = page.querySelector('#td-status') as HTMLElement;
-    const fillEl = page.querySelector('#td-confidence-fill') as HTMLElement;
+    const fillEl   = page.querySelector('#td-confidence-fill') as HTMLElement;
     const demoText = page.querySelector('#td-demo-text') as HTMLElement;
 
     if (motion === expectedMotion) {
       const pct = Math.round(confidence * 100);
-      statusEl.textContent = `Detected! ${pct}% confidence`;
-      statusEl.style.color = 'var(--accent-sage)';
-      fillEl.style.width = `${pct}%`;
+      statusEl.textContent    = `Detected! ${pct}% confidence`;
+      statusEl.style.color    = 'var(--accent-sage)';
+      fillEl.style.width      = `${pct}%`;
       fillEl.style.background = 'var(--accent-sage)';
-      demoText.textContent = 'Great job!';
+      demoText.textContent    = 'Great job!';
       onCorrect(confidence);
     } else {
-      const meta = MOTION_META[motion];
-      statusEl.textContent = `Detected "${meta.label}" — try the correct motion`;
-      statusEl.style.color = 'var(--accent-rose)';
-      fillEl.style.width = '20%';
+      const label = MOTION_META[motion]?.label ?? 'wrong motion';
+      statusEl.textContent    = `Detected "${label}" — try the correct motion`;
+      statusEl.style.color    = 'var(--accent-rose)';
+      fillEl.style.width      = '20%';
       fillEl.style.background = 'var(--accent-rose)';
-      onWrong(page);
+      flashRadial(page, 'wrong');
+      onWrongMotion?.();
     }
   };
 }
 
-/* ── Visual feedback ───────────────────────────────────── */
+/* ── Visual feedback ─────────────────────────────────────────────────────── */
 
 function flashRadial(page: HTMLElement, type: 'success' | 'wrong'): void {
   const flash = page.querySelector('#td-flash') as HTMLElement;
   flash.classList.remove('td-flash--success', 'td-flash--wrong');
-  void flash.offsetWidth; // force reflow
+  void flash.offsetWidth;
   flash.classList.add(type === 'success' ? 'td-flash--success' : 'td-flash--wrong');
   setTimeout(() => flash.classList.remove('td-flash--success', 'td-flash--wrong'), 700);
 }
@@ -340,25 +603,14 @@ function onSuccess(page: HTMLElement): void {
   setTimeout(() => showPopup(page), 500);
 }
 
-function onWrong(page: HTMLElement): void {
-  flashRadial(page, 'wrong');
-
-  const demoContainer = page.querySelector('#td-grinder-container') as HTMLElement;
-  demoContainer.classList.remove('td-wrong-shake');
-  void demoContainer.offsetWidth; // force reflow for quick re-trigger
-  demoContainer.classList.add('td-wrong-shake');
-  setTimeout(() => demoContainer.classList.remove('td-wrong-shake'), 450);
-}
-
 function updateCounter(page: HTMLElement, count: number, total: number): void {
-  const el = page.querySelector('#td-counter') as HTMLElement;
-  el.textContent = `${count} / ${total}`;
+  (page.querySelector('#td-counter') as HTMLElement).textContent = `${count} / ${total}`;
 }
 
 function showPopup(page: HTMLElement): void {
   const popup = page.querySelector('#td-popup') as HTMLElement;
   const currentMotion = (page.dataset.motion ?? 'grinding') as MotionType;
-  const idx = TUTORIAL_ORDER.indexOf(currentMotion);
+  const idx    = TUTORIAL_ORDER.indexOf(currentMotion);
   const isLast = idx === TUTORIAL_ORDER.length - 1;
 
   const stayBtn = popup.querySelector('[data-popup="stay"]') as HTMLButtonElement;
@@ -366,20 +618,19 @@ function showPopup(page: HTMLElement): void {
   const nextBtn = popup.querySelector('[data-popup="next"]') as HTMLButtonElement;
 
   if (isLast) {
-    // Last tutorial: show all 3 buttons
     stayBtn.textContent = 'Try Again';
     redoBtn.classList.remove('hidden');
     redoBtn.textContent = 'Redo Tutorial';
     nextBtn.textContent = 'Start Game';
     (popup.querySelector('.td-popup__title') as HTMLElement).textContent = 'Tutorials Complete!';
-    (popup.querySelector('.td-popup__text') as HTMLElement).textContent =
+    (popup.querySelector('.td-popup__text') as HTMLElement).textContent  =
       'You\'ve practised all the motions. Ready to play?';
   } else {
     stayBtn.textContent = 'Try Again';
     redoBtn.classList.add('hidden');
     nextBtn.textContent = 'Next Tutorial';
     (popup.querySelector('.td-popup__title') as HTMLElement).textContent = 'Nice work!';
-    (popup.querySelector('.td-popup__text') as HTMLElement).textContent = 'You completed this motion.';
+    (popup.querySelector('.td-popup__text') as HTMLElement).textContent  = 'You completed this motion.';
   }
 
   popup.classList.remove('hidden');
@@ -391,14 +642,12 @@ function hidePopup(page: HTMLElement): void {
 
 function handleStay(page: HTMLElement): void {
   hidePopup(page);
-  // Re-arm the page by toggling active class to retrigger the observer
   page.classList.remove('active');
   requestAnimationFrame(() => page.classList.add('active'));
 }
 
 function handleRedo(page: HTMLElement): void {
   hidePopup(page);
-  // Start from the first tutorial again
   page.classList.add('td-slide-out-left');
   setTimeout(() => {
     page.classList.remove('td-slide-out-left', 'active');
@@ -414,7 +663,6 @@ function handleNext(page: HTMLElement): void {
 
   if (idx < TUTORIAL_ORDER.length - 1) {
     const nextMotion = TUTORIAL_ORDER[idx + 1];
-    // Add slide-out-left class for the transition
     page.classList.add('td-slide-out-left');
     setTimeout(() => {
       page.classList.remove('td-slide-out-left', 'active');
@@ -422,7 +670,6 @@ function handleNext(page: HTMLElement): void {
       router.go('tutorial-detail', { motion: nextMotion });
     }, 450);
   } else {
-    // Last tutorial — go to gameplay
     router.go('play', { levelId: '1' });
   }
 }

@@ -355,3 +355,42 @@
   background: var(--accent-sage);
   box-shadow: 0 0 8px var(--accent-sage);
 }
+
+/* ── Countdown Flash Overlay ────────────────────────────── */
+.countdown-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.countdown-flash--visible {
+  opacity: 1;
+}
+
+.countdown-flash__number {
+  font-family: var(--font-display, system-ui, sans-serif);
+  font-size: clamp(6rem, 25vw, 14rem);
+  font-weight: 900;
+  line-height: 1;
+  color: #fff;
+  text-shadow: 0 0 40px rgba(255,255,255,0.4), 0 4px 24px rgba(0,0,0,0.6);
+}
+
+@keyframes countdown-pop {
+  0%   { transform: scale(1.6); opacity: 0; }
+  40%  { transform: scale(0.92); opacity: 1; }
+  65%  { transform: scale(1.06); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.countdown-flash--pop .countdown-flash__number {
+  animation: countdown-pop 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}

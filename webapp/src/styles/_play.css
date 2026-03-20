@@ -317,3 +317,27 @@
   border-radius: var(--radius-lg);
   backdrop-filter: blur(3px);
 }
+
+/* ── Play page: sensor graph (bottom-right, mirrors tutorial) ── */
+/* Add this block to the bottom of _play.css                      */
+
+.play-sensor-container {
+  position: fixed;
+  bottom: var(--space-lg);
+  right: var(--space-lg);
+  z-index: 2;
+
+  /* Hidden until a graph is built for the current step */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Reuse the same canvas card styling from _tutorials.css */
+#play .sensor-xy-map__canvas,
+#play .sensor-z-strip__canvas {
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(120, 100, 80, 0.22);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  border-radius: 12px;
+}

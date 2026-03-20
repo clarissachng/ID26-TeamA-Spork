@@ -13,9 +13,6 @@
 
 .grinder-tutorial.wrong {
   animation: shake 0.5s ease;
-  background-color: rgba(220, 50, 50, 0.25);
-  border-radius: 12px;
-  transition: background-color 0.3s ease;
 }
 
 .grinder-tutorial:not(.wrong) {
@@ -406,6 +403,10 @@
 .press-tutorial.success .press-middle {
   filter: drop-shadow(0 0 18px rgba(120, 230, 100, 0.85)) drop-shadow(0 0 40px rgba(120, 230, 100, 0.45));
   transition: filter 0.3s ease;
+}
+
+.press-tutorial.success {
+  animation: none;
 }
 
 .press-tutorial.wrong {
@@ -857,4 +858,12 @@
   overflow: hidden;
   clip: rect(0,0,0,0);
   border: 0;
+}
+
+/* ── Tutorial Detail: scan prompt override ─────────────── */
+/* .play-scan-prompt defaults to near-white for the dark play bg.
+   Override to a dark readable colour on the lighter tutorial bg. */
+#tutorial-detail .play-scan-prompt {
+  color: #3d2e1e;
+  text-shadow: none;
 }

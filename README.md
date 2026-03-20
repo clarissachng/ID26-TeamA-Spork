@@ -57,6 +57,7 @@ Rituals, Habit formation, Proxy objects, Breaking, mindfulness with proxy object
 | <img width="400" height="auto" src="/assets/sticky-notes.png"> | **Sticky Notes**: To identify what components do we need for the board |
 | <img width="400" height="auto" src="assets/real_objects.JPG"> | **Real Objects**: To visualise how the board would look like -- next step would be 3d printing the things out |
 | <img width="400" height="auto" src="assets/3d_objects.jpg"> | **3D Objects**: testing out the size of the objects with the 3d objects, looking for components placement, adjusting the posisiton of mr spork (our nfc reader) and buttons on the board |
+| <img src="assets/box_w_objects.png" width="400" style="transform: rotate(-90deg);" /> | **3D Objects on box**: placing the  objects on the box to prepare for the next step > engaving the holders on the box |
 | <img width="400" height="auto" src="/assets/first_iteration.gif"> | **First iteration for software**: First idea dump for the game|
 | <img width="400" height="auto" src="/assets/second_iteration.gif"> | **Second iteration for software**: Refined the main page to reflect more like the actual board placement -- more visuals imported|
 | <img width="400" height="auto" src="/assets/third_iteration.gif"> | **Third iteration for software**: Redesigned gameplay rounds with NFC features, refined tutorials screens and navigation and added complete flow for choreograph screens|
@@ -68,20 +69,28 @@ Rituals, Habit formation, Proxy objects, Breaking, mindfulness with proxy object
 <details>
 <summary><strong>Week 20 - 12/03</strong></summary>
 
-- [ ] Solder
-- [ ] Magnet placements
-- [ ] NFC Capsule placement
-- [ ] Recording motions
-- [ ] Tutorial screens adjustment (Visuals)
-- [ ] Gameplay logic
-- [ ] z-axis feedback to real time scrolling graph
-- [ ] Button function (fallback keypress)
+- [x] Solder
+- [x] Magnet placements
+- [x] NFC Capsule placement
+- [x] Recording motions
+- [x] Tutorial screens adjustment (Visuals)
+- [x] Gameplay logic
+- [x] z-axis feedback to real time scrolling graph
+- [x] Button function (fallback keypress)
+
+</details>
+
+<details>
+<summary><strong>Week 21 - 19/03</strong></summary>
+
+- [ ] Box (Laser cut)
+- [ ] Implement NFC reader to the game
+- [ ] gameplay flow
+- [ ] encoder implementation
 
 </details>
 
 ### Notes
-Week 20
-
 <details>
 <summary><strong>Week 20</strong></summary>
 
@@ -89,6 +98,16 @@ Week 20
 - tries different types of 3d matcha whisk but it fails -- hence using the normal balloon whisk 
 - motion detection work successfully 
 - storyboarded our gameplay 
+
+</details>
+
+<details>
+<summary><strong>Week 21</strong></summary>
+
+- completed the board - left with engraving in the shapes
+- implemented the nfc reader, gameplay works as a whole (from tutorial > game)
+- bridged front and backend 
+- created the website for gameplay
 
 </details>
 
