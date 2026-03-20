@@ -65,14 +65,21 @@ export class DipTutorial {
 
   /** Correct motion: teabag dips into cup then returns to still */
   triggerSuccess(): void {
+    // prevent leftover wrong-shake
+    this.el.classList.remove('wrong');
+    this.el.classList.remove('success');
+    void this.el.offsetWidth;
     this.el.classList.add('success');
-    this.teabag.style.animation = '';
-    void this.teabag.offsetWidth;
-    this.teabag.style.animation = 'dipSuccess 1.6s cubic-bezier(0.22, 1, 0.36, 1) forwards';
-    this.teabag.addEventListener('animationend', () => {
-      this.el.classList.remove('success');
-      this.teabag.style.animation = 'none';
-    }, { once: true });
+
+    this.teabag.style.animation = 'dipSuccess 1s ease-out forwards';
+    this.teabag.addEventListener(
+      'animationend',
+      () => {
+        this.el.classList.remove('success');
+        this.teabag.style.animation = 'dipIdle 2.2s ease-in-out infinite';
+      },
+      { once: true }
+    );
   }
 
   /** Wrong motion: shake the container */

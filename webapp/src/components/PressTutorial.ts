@@ -67,26 +67,33 @@ export class PressTutorial {
 
   /** Correct motion: full press down */
   triggerSuccess(): void {
+    // Clear any inline animation left over from triggerWrong
+    this.el.style.animation = '';
+    this.el.classList.remove('wrong');
     this.el.classList.add('success');
+
     this.middleLayer.style.animation = '';
     void this.middleLayer.offsetWidth;
-    this.middleLayer.style.animation = 'pressSuccess 1.25s cubic-bezier(0.22, 1, 0.36, 1) forwards';
-    this.middleLayer.addEventListener('animationend', () => {
-      this.el.classList.remove('success');
-      this.middleLayer.style.animation = 'none';
-    }, { once: true });
+    this.middleLayer.style.animation = 'pressSuccess 0.9s ease-out forwards';
+    this.middleLayer.addEventListener(
+      'animationend',
+      () => {
+        this.el.classList.remove('success');
+        this.middleLayer.style.animation = 'none';
+      },
+      { once: true }
+    );
   }
 
-  /** Wrong motion: shake */
+  /** Wrong motion: shake — CSS class handles the animation */
   triggerWrong(): void {
+    this.el.style.animation = '';
     this.el.classList.remove('wrong');
     void this.el.offsetWidth;
     this.el.classList.add('wrong');
-    this.el.style.animation = 'shake 0.4s ease';
     setTimeout(() => {
-      this.el.style.animation = '';
       this.el.classList.remove('wrong');
-    }, 400);
+    }, 450);
   }
 
   /** Reset to idle */

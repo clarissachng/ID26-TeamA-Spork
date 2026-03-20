@@ -79,6 +79,7 @@ export class GrinderTutorial {
 
   /** Correct motion: fast spin, then reset to still */
   triggerSuccess(): void {
+    this.el.classList.remove('wrong');
     this.el.classList.add('success');
     this.handle.style.animation = '';
     void this.handle.offsetWidth;
