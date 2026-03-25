@@ -77,7 +77,7 @@ COUNTDOWN_SECONDS  = 3
 RECORDING_SECONDS  = 8
 CALIBRATION_SAMPLES = 50   # first 2 s at 25 Hz used as baseline
 
-PASS_THRESHOLD = 0.70
+PASS_THRESHOLD = 0.60
 
 ROUND_ACTIONS = {1: 3, 2: 5, 3: 7}
 ALL_MOTIONS   = ["grinding", "up_down", "press_down"]
@@ -116,6 +116,16 @@ async def broadcast(msg: dict) -> None:
         *[c.send(data) for c in connected_clients],
         return_exceptions=True,
     )
+
+
+async def wait_for_client() -> None:
+    """Block game flow until at least one frontend WS client is connected."""
+    if connected_clients:
+        return
+    print("  [WS] Waiting for frontend client to connect...")
+    while not connected_clients:
+        await asyncio.sleep(0.1)
+    print("  [WS] Frontend client connected — starting play flow")
 
 
 # ── Arduino B reader (NFC + Knob) ──────────────────────────────────────────
@@ -410,13 +420,31 @@ async def run_action(motion: str, tool: str,
 
 # ── Round runner ───────────────────────────────────────────────────────────
 
+
+def generate_action_sequence(n_actions, all_motions, all_tools):
+    import random
+    tool_counts = {t: 0 for t in all_tools}
+    last_tool = None
+    last_motion = None
+    actions = []
+    for _ in range(n_actions):
+        available_tools = [t for t in all_tools if t != last_tool and tool_counts[t] < 2]
+        available_motions = [m for m in all_motions if m != last_motion]
+        tool = random.choice(available_tools) if available_tools else random.choice([t for t in all_tools if t != last_tool])
+        motion = random.choice(available_motions) if available_motions else random.choice([m for m in all_motions if m != last_motion])
+        actions.append((motion, tool))
+        tool_counts[tool] += 1
+        last_tool = tool
+        last_motion = motion
+    return actions
+
 async def run_round(round_num: int, state_ref: list[str]) -> float:
     n_actions = ROUND_ACTIONS.get(round_num, 3)
     scores: list[float] = []
+    all_tools = list(NFC_TAGS.values())
+    actions = generate_action_sequence(n_actions, ALL_MOTIONS, all_tools)
 
-    for action_idx in range(n_actions):
-        motion    = random.choice(ALL_MOTIONS)
-        tool      = random.choice(list(NFC_TAGS.values()))
+    for action_idx, (motion, tool) in enumerate(actions):
         skip_nfc  = False
         action_score = 0.0
 
@@ -451,6 +479,8 @@ async def run_round(round_num: int, state_ref: list[str]) -> float:
 
 async def game_loop(start_round: int, state_ref: list[str]) -> None:
     """Run rounds 1–3, waiting for frontend 'ready' between rounds."""
+    await wait_for_client()
+
     # Wait for frontend to be ready before starting
     print("  Waiting for frontend 'ready'… (or press Enter to start)")
     _ready_event.clear()

@@ -172,6 +172,13 @@ export function createTutorialDetail(): HTMLElement {
     pressTut?.triggerWrong();
   }
 
+  function motionInstructionText(targetMotion: MotionType): string {
+    if (targetMotion === 'grinding') return 'Make a circular motion!';
+    if (targetMotion === 'up_down') return 'Dip it many times!';
+    if (targetMotion === 'press_down') return 'Press down once firmly!';
+    return 'Do the motion now!';
+  }
+
   // ── Listener cleanup ──────────────────────────────────────────────────────
 
   function cleanupListeners(): void {
@@ -347,10 +354,10 @@ export function createTutorialDetail(): HTMLElement {
           const detail = (e as CustomEvent).detail as { seconds: number };
           scanPromptEl.classList.remove('hidden');
           scanPromptEl.textContent =
-            detail.seconds > 0 ? `Get ready… ${detail.seconds}` : 'Do the motion now!';
+            detail.seconds > 0 ? 'Get ready...' : motionInstructionText(motion);
 
           if (detail.seconds <= 1) {
-            updateStatus(page, 'Do the motion now!', 'var(--accent-gold)');
+            updateStatus(page, motionInstructionText(motion), 'var(--accent-gold)');
           }
 
           if (detail.seconds > 0) {
@@ -448,8 +455,11 @@ export function createTutorialDetail(): HTMLElement {
           if (keyHandler)    { document.removeEventListener('keydown', keyHandler);             keyHandler = null; }
 
           scanPromptEl.classList.remove('hidden');
-          scanPromptEl.textContent = `Do the ${MOTION_META[motion].label} motion!`;
-          updateStatus(page, 'Do the motion now!', 'var(--accent-gold)');
+          scanPromptEl.textContent = motionInstructionText(motion);
+          updateStatus(page, motionInstructionText(motion), 'var(--accent-gold)');
+          // Show the motion instruction in the main demo area
+          const demoText = page.querySelector('#td-demo-text') as HTMLElement | null;
+          if (demoText) demoText.textContent = motionInstructionText(motion);
 
           // Remove scan keyHandler, register motion keyHandler
           if (keyHandler) { document.removeEventListener('keydown', keyHandler); keyHandler = null; }

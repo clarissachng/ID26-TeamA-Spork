@@ -30,13 +30,12 @@ const PASS_THRESHOLD = 0.6;
  */
 const TOOL_ASSETS: Record<string, string> = {
   'Coffee Grinder': assetUrl('/assets/front_grinder.PNG'),
-  'Milk':           assetUrl('/assets/front_milk.PNG'),
+  'Kettle':         assetUrl('/assets/front_milk.PNG'),
   'Coffee Press':   assetUrl('/assets/front_press.PNG'),
   'Sieve':          assetUrl('/assets/front_sieve.PNG'),
   'Spork':          assetUrl('/assets/front_spork.png'),
   'Tea Bag':        assetUrl('/assets/front_tea.PNG'),
   'Tongs':          assetUrl('/assets/front_tongs.png'),
-  'Whisk':          assetUrl('/assets/front_whisk.PNG'),
 };
 
 /** All physical tool names — must match NFC_TAGS values in classifier.py */
@@ -131,17 +130,35 @@ function startLevel(page: HTMLElement): void {
    */
   function makeRandomSteps(count: number, duration: number): PlayStep[] {
     const motions: MotionType[] = ['grinding', 'up_down', 'press_down'];
-    return Array.from({ length: count }, (_, i) => {
-      const motion = motions[Math.floor(Math.random() * motions.length)];
-      const tool   = ALL_TOOLS[Math.floor(Math.random() * ALL_TOOLS.length)];
-      return {
+    const toolCounts: Record<string, number> = Object.fromEntries(ALL_TOOLS.map(t => [t, 0]));
+    let lastTool: string | null = null;
+    let lastMotion: MotionType | null = null;
+    const steps: PlayStep[] = [];
+    for (let i = 0; i < count; i++) {
+      // Filter tools: not same as last, not used more than twice
+      const availableTools = ALL_TOOLS.filter(t => t !== lastTool && toolCounts[t] < 2);
+      // Filter motions: not same as last
+      const availableMotions = motions.filter(m => m !== lastMotion);
+      // If no available tools (shouldn't happen unless count > tools.length*2), fallback to all tools except last
+      const tool = availableTools.length > 0
+        ? availableTools[Math.floor(Math.random() * availableTools.length)]
+        : ALL_TOOLS.filter(t => t !== lastTool)[Math.floor(Math.random() * (ALL_TOOLS.length - 1))];
+      // If no available motions (shouldn't happen unless count > motions.length), fallback to all except last
+      const motion = availableMotions.length > 0
+        ? availableMotions[Math.floor(Math.random() * availableMotions.length)]
+        : motions.filter(m => m !== lastMotion)[Math.floor(Math.random() * (motions.length - 1))];
+      steps.push({
         motion,
         duration,
         label:       `Step ${i + 1}`,
         description: MOTION_META[motion].description,
         tool,
-      };
-    });
+      });
+      toolCounts[tool]++;
+      lastTool = tool;
+      lastMotion = motion;
+    }
+    return steps;
   }
 
   const runSteps: PlayStep[] = replay
@@ -439,12 +456,22 @@ function startLevel(page: HTMLElement): void {
 
     if (backendDriven) {
       scanPromptEl.classList.remove('hidden');
-      scanPromptEl.textContent = 'Waiting for backend prompt…';
-      void playBridge.nextPrompt(stepIndex + 1, BACKEND_PROMPT_TIMEOUT_MS).then((msg) => {
-        if (stepIndex !== currentStep) return;
-        if (msg) applyBackendPromptToStep(stepIndex, msg.motion, msg.tool);
-        beginScanPhase();
-      });
+      scanPromptEl.textContent = 'Loading...';
+
+      const waitForPrompt = (): void => {
+        void playBridge.nextPrompt(stepIndex + 1, BACKEND_PROMPT_TIMEOUT_MS).then((msg) => {
+          if (stepIndex !== currentStep) return;
+          if (!msg) {
+            scanPromptEl.textContent = 'Loading...';
+            waitForPrompt();
+            return;
+          }
+          applyBackendPromptToStep(stepIndex, msg.motion, msg.tool);
+          beginScanPhase();
+        });
+      };
+
+      waitForPrompt();
       return;
     }
 
