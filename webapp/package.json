@@ -5,10 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
+    "backend": "python3 backend/bridge_main.py --mag-port /dev/cu.usbmodem101 --nfc-port /dev/cu.usbmodem1101",
+    "start": "concurrently \"npm run dev\" \"npm run backend\""
   },
   "devDependencies": {
+    "concurrently": "^9.2.1",
     "typescript": "~5.9.3",
     "vite": "^7.3.1"
   },

@@ -96,6 +96,16 @@ async def broadcast(msg: dict) -> None:
     )
 
 
+async def wait_for_client() -> None:
+    """Block tutorial flow until at least one frontend WS client is connected."""
+    if connected_clients:
+        return
+    print("  [WS] Waiting for frontend client to connect...")
+    while not connected_clients:
+        await asyncio.sleep(0.1)
+    print("  [WS] Frontend client connected — starting tutorial flow")
+
+
 # ── Arduino B reader ───────────────────────────────────────────────────────
 
 async def arduino_b_reader(port: str) -> None:
@@ -345,6 +355,8 @@ async def run_step(step_idx: int, motion: str, tool: str,
 # ── Tutorial loop ──────────────────────────────────────────────────────────
 
 async def tutorial_loop(state_ref: list[str]) -> None:
+    await wait_for_client()
+
     # Initial calibration
     print("\n  ── Initial calibration ──")
     await calibrate(2.0, state_ref)

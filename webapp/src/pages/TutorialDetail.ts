@@ -301,7 +301,25 @@ export function createTutorialDetail(): HTMLElement {
       tutorialBridge.connect();
       const scanPromptEl = page.querySelector('#td-scan-prompt') as HTMLElement;
 
-      if (tutorialBridge.isConnected()) {
+      let usingKeyboardFallback = false;
+
+      const setupBackendOrKeyboard = (backendConnected: boolean): void => {
+        if (backendConnected) {
+        usingKeyboardFallback = false;
+        let motionWindowStarted = false;
+
+        const startBackendMotionWindow = (): void => {
+          if (motionWindowStarted || resolved) return;
+          motionWindowStarted = true;
+          countdownFlash.hide();
+          startMotionTimer(8, () => {
+            stopMotionTimer();
+            flashRadial(page, 'wrong');
+            triggerWrong();
+            resetFeedbackVisuals();
+          });
+        };
+
         // ── Backend path ───────────────────────────────────────────────────
 
         promptHandler = ((e: Event) => {
@@ -311,6 +329,7 @@ export function createTutorialDetail(): HTMLElement {
           if (detail.motion !== motion) return;
 
           hasMatchingPrompt = true; // unlock countdown handling for this page
+          motionWindowStarted = false;
           stopMotionTimer();
 
           scanPromptEl.classList.remove('hidden');
@@ -320,8 +339,10 @@ export function createTutorialDetail(): HTMLElement {
         document.addEventListener('tutorial-prompt', promptHandler);
 
         countdownHandler = ((e: Event) => {
-          // Ignore stray countdowns from other tutorial steps/pages
-          if (!hasMatchingPrompt) return;
+          // If prompt arrived before this page listener, recover on first countdown tick.
+          if (!hasMatchingPrompt) {
+            hasMatchingPrompt = true;
+          }
 
           const detail = (e as CustomEvent).detail as { seconds: number };
           scanPromptEl.classList.remove('hidden');
@@ -332,16 +353,16 @@ export function createTutorialDetail(): HTMLElement {
             updateStatus(page, 'Do the motion now!', 'var(--accent-gold)');
           }
 
-          if (detail.seconds === 0) {
-            countdownFlash.hide();
-            startMotionTimer(8, () => {
-              stopMotionTimer();
-              flashRadial(page, 'wrong');
-              triggerWrong();
-              resetFeedbackVisuals();
-            });
-          } else {
+          if (detail.seconds > 0) {
             countdownFlash.flash(detail.seconds);
+            if (detail.seconds === 1) {
+              setTimeout(() => {
+                if (!page.classList.contains('active')) return;
+                startBackendMotionWindow();
+              }, 1000);
+            }
+          } else {
+            startBackendMotionWindow();
           }
         });
         document.addEventListener('tutorial-countdown', countdownHandler);
@@ -409,6 +430,7 @@ export function createTutorialDetail(): HTMLElement {
         }
 
       } else {
+        usingKeyboardFallback = true;
         // ── Keyboard fallback ──────────────────────────────────────────────
         // Flow: Space = simulate NFC scan → 3-2-1 countdown flash →
         //       8s motion timer → Space = correct, any key = wrong
@@ -522,6 +544,18 @@ export function createTutorialDetail(): HTMLElement {
         };
         document.addEventListener('keydown', keyHandler);
       }
+      };
+
+      // Register backend listeners immediately so first prompt/countdown cannot be missed.
+      setupBackendOrKeyboard(true);
+
+      // If backend doesn't connect shortly, switch to keyboard fallback.
+      void tutorialBridge.waitForConnection(2500).then((isConnected) => {
+        if (!page.classList.contains('active')) return;
+        if (isConnected || hasMatchingPrompt || usingKeyboardFallback) return;
+        cleanupListeners();
+        setupBackendOrKeyboard(false);
+      });
 
     } else {
       // Leaving page — clean up everything

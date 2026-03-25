@@ -85,15 +85,10 @@ export function createMainMenu(): HTMLElement {
   const label = page.querySelector('#ws-label') as HTMLElement;
 
   type ConnectionState = 'connecting' | 'connected' | 'disconnected';
-
-  function getState(): ConnectionState {
-    if (motionDetector.connected) return 'connected';
-    // If not connected but we haven't explicitly disconnected, we're trying
-    return 'connecting';
-  }
+  let connectionState: ConnectionState = motionDetector.connected ? 'connected' : 'connecting';
 
   function updateStatus(): void {
-    const state = getState();
+    const state = connectionState;
     // Update dot colour class
     dot.className = 'arduino-status-btn__dot';
     if (state === 'connected') dot.classList.add('dot--connected');
@@ -116,6 +111,7 @@ export function createMainMenu(): HTMLElement {
       setTimeout(updateStatus, 1200);
     } else {
       // Attempt to reconnect
+      connectionState = 'connecting';
       label.textContent = 'Reconnecting…';
       dot.className = 'arduino-status-btn__dot dot--connecting';
       motionDetector.disconnect();
@@ -123,7 +119,24 @@ export function createMainMenu(): HTMLElement {
     }
   });
 
-  document.addEventListener('ws-status', updateStatus);
+  document.addEventListener('ws-connected', () => {
+    connectionState = 'connected';
+    updateStatus();
+  });
+
+  document.addEventListener('ws-disconnected', () => {
+    connectionState = 'disconnected';
+    updateStatus();
+  });
+
+  document.addEventListener('ws-status', ((e: Event) => {
+    const detail = (e as CustomEvent).detail as { state?: ConnectionState };
+    if (detail?.state) {
+      connectionState = detail.state;
+      updateStatus();
+    }
+  }) as EventListener);
+
   updateStatus();
 
   return page;
