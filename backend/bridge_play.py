@@ -332,7 +332,7 @@ async def record_motion(duration_s: float,
 
 async def run_countdown(state_ref: list[str]) -> None:
     state_ref[0] = "countdown"
-    for i in range(COUNTDOWN_SECONDS, 0, -1):
+    for i in range(COUNTDOWN_SECONDS, -1, -1): # Changed 0 to -1 to include the 0 tick
         await broadcast({"type": "countdown", "seconds": i})
         print(f"    {i}…")
         await asyncio.sleep(1.0)
