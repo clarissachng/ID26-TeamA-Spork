@@ -101,6 +101,14 @@ class PlayBridge {
     this.ws.send(JSON.stringify({ ready: true }));
   }
 
+  sendUiState(page: string, levelId?: number): void {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    const msg = levelId !== undefined
+      ? { type: 'ui_state', page, levelId }
+      : { type: 'ui_state', page };
+    this.ws.send(JSON.stringify(msg));
+  }
+
   private emit(type: string, detail: unknown): void {
     document.dispatchEvent(new CustomEvent(type, { detail }));
   }

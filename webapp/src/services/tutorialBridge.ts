@@ -54,6 +54,11 @@ class TutorialBridge {
     return this.connected;
   }
 
+  sendUiState(page: string, motion?: string): void {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    this.ws.send(JSON.stringify({ type: 'ui_state', page, motion }));
+  }
+
   async waitForConnection(timeoutMs = 5000): Promise<boolean> {
     if (this.connected) return true;
 

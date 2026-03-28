@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "backend": "python3 backend/bridge_main.py --mag-port /dev/cu.usbmodem101 --nfc-port /dev/cu.usbmodem1101",
+    "backend": "python3 backend/launcher.py --mag-port /dev/cu.usbmodem101 --nfc-port /dev/cu.usbmodem1101",
     "start": "concurrently \"npm run dev\" \"npm run backend\""
   },
   "devDependencies": {

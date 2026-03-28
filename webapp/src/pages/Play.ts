@@ -718,13 +718,18 @@ function startLevel(page: HTMLElement): void {
 
     resultArea
       .querySelector('[data-action="retry"]')!
-      .addEventListener("click", () => startLevel(page));
+      .addEventListener("click", () => {
+        if (useBackendRandom && playBridge.isConnected()) {
+          playBridge.sendUiState("play", levelId);
+        }
+        startLevel(page);
+      });
 
     if (nextLevel) {
       resultArea
         .querySelector('[data-action="next"]')!
         .addEventListener("click", () => {
-          playBridge.sendReady();
+          // ui_state for the next level is sent by startLevel when it runs
           router.go("play", { levelId: String(nextLevel.id) });
         });
     }
@@ -742,12 +747,11 @@ function startLevel(page: HTMLElement): void {
 
   // Connect WebSocket and wait for connection before starting game
   if (useBackendRandom) {
-    // For backend-driven mode, wait for connection to establish
     void playBridge.waitForConnection(10000).then((connected) => {
       console.log("[Play] Backend connection ready:", connected);
       if (connected) {
-        // Send "ready" signal so backend starts generating prompts
-        playBridge.sendReady();
+        // Tell the state manager which round to run
+        playBridge.sendUiState("play", levelId);
       }
       advance();
     });

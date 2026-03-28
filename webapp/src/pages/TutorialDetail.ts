@@ -251,6 +251,11 @@ export function createTutorialDetail(): HTMLElement {
       const motion = (page.dataset.motion ?? 'grinding') as MotionType;
       setupDetail(page, motion);
 
+      // Tell backend we are in tutorial mode
+      void tutorialBridge.waitForConnection(2000).then(connected => {
+        if (connected) tutorialBridge.sendUiState('tutorial', motion);
+      });
+
       // Tear down previous component
       (page.querySelector('#td-grinder-container') as HTMLElement).innerHTML = '';
       grinder = dipTut = pressTut = null;
@@ -259,13 +264,14 @@ export function createTutorialDetail(): HTMLElement {
       // Sensor visualiser
       const cupContainer = page.querySelector('#td-cup-container') as HTMLElement;
       cupContainer.innerHTML = '';
-      if (motion === 'grinding') {
+      const motionStr = motion as string;
+      if (motionStr === 'grinding') {
         xyMap = new SensorXYMap(cupContainer, MOTION_META['grinding'].arrow, 0.65);
         xyMap.startListening();
-      } else if (motion === 'up_down') {
+      } else if (motionStr === 'up_down') {
         zStrip = new SensorZStrip(cupContainer, MOTION_META['up_down'].arrow, 0.65);
         zStrip.startListening();
-      } else if (motion === 'press_down') {
+      } else if (motionStr === 'press_down') {
         zStrip = new SensorZStrip(cupContainer, MOTION_META['press_down'].arrow, 0.65);
         zStrip.startListening();
       } else {
