@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
     "backend": "python3 backend/launcher.py --mag-port /dev/cu.usbmodem101 --nfc-port /dev/cu.usbmodem1101",
     "start": "concurrently \"npm run dev\" \"npm run backend\""
   },
