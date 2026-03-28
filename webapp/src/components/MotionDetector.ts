@@ -40,6 +40,7 @@ export class MotionDetectorWS {
   /** Call once from main.ts to open the connection. Auto-reconnects. */
   connect(): void {
     if (this.ws) return;
+    this._fire('ws-status', { state: 'connecting' });
     try {
       this.ws = new WebSocket(this.url);
       this.ws.onopen    = () => this._onOpen();
@@ -75,6 +76,7 @@ export class MotionDetectorWS {
     this._connected = true;
     console.log('[WS] Connected to bridge');
     this._fire('ws-connected', {});
+    this._fire('ws-status', { state: 'connected' });
   }
 
   private _onClose(): void {
@@ -82,6 +84,7 @@ export class MotionDetectorWS {
     this.ws = null;
     console.log('[WS] Disconnected — retrying in 3 s');
     this._fire('ws-disconnected', {});
+    this._fire('ws-status', { state: 'disconnected' });
     this._scheduleReconnect();
   }
 

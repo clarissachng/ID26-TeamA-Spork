@@ -152,7 +152,7 @@ export function createTutorialDetail(): HTMLElement {
   let lastSuccessAt = 0;
   const SUCCESS_STEP        = 1;
   const SUCCESS_DEBOUNCE_MS = 600;
-  const REQUIRED_SUCCESSES  = 2;
+  const REQUIRED_SUCCESSES  = 1;
 
   // Gate backend flow per page:
   // countdown/result events are ignored until this page gets its own prompt.
@@ -170,6 +170,13 @@ export function createTutorialDetail(): HTMLElement {
     grinder?.triggerWrong();
     dipTut?.triggerWrong();
     pressTut?.triggerWrong();
+  }
+
+  function motionInstructionText(targetMotion: MotionType): string {
+    if (targetMotion === 'grinding') return 'Make a circular motion!';
+    if (targetMotion === 'up_down') return 'Dip it many times!';
+    if (targetMotion === 'press_down') return 'Press down once firmly!';
+    return 'Do the motion now!';
   }
 
   // ── Listener cleanup ──────────────────────────────────────────────────────
@@ -244,6 +251,11 @@ export function createTutorialDetail(): HTMLElement {
       const motion = (page.dataset.motion ?? 'grinding') as MotionType;
       setupDetail(page, motion);
 
+      // Tell backend we are in tutorial mode
+      void tutorialBridge.waitForConnection(2000).then(connected => {
+        if (connected) tutorialBridge.sendUiState('tutorial', motion);
+      });
+
       // Tear down previous component
       (page.querySelector('#td-grinder-container') as HTMLElement).innerHTML = '';
       grinder = dipTut = pressTut = null;
@@ -252,13 +264,14 @@ export function createTutorialDetail(): HTMLElement {
       // Sensor visualiser
       const cupContainer = page.querySelector('#td-cup-container') as HTMLElement;
       cupContainer.innerHTML = '';
-      if (motion === 'grinding') {
+      const motionStr = motion as string;
+      if (motionStr === 'grinding') {
         xyMap = new SensorXYMap(cupContainer, MOTION_META['grinding'].arrow, 0.65);
         xyMap.startListening();
-      } else if (motion === 'up_down') {
+      } else if (motionStr === 'up_down') {
         zStrip = new SensorZStrip(cupContainer, MOTION_META['up_down'].arrow, 0.65);
         zStrip.startListening();
-      } else if (motion === 'press_down') {
+      } else if (motionStr === 'press_down') {
         zStrip = new SensorZStrip(cupContainer, MOTION_META['press_down'].arrow, 0.65);
         zStrip.startListening();
       } else {
@@ -301,7 +314,25 @@ export function createTutorialDetail(): HTMLElement {
       tutorialBridge.connect();
       const scanPromptEl = page.querySelector('#td-scan-prompt') as HTMLElement;
 
-      if (tutorialBridge.isConnected()) {
+      let usingKeyboardFallback = false;
+
+      const setupBackendOrKeyboard = (backendConnected: boolean): void => {
+        if (backendConnected) {
+        usingKeyboardFallback = false;
+        let motionWindowStarted = false;
+
+        const startBackendMotionWindow = (): void => {
+          if (motionWindowStarted || resolved) return;
+          motionWindowStarted = true;
+          countdownFlash.hide();
+          startMotionTimer(8, () => {
+            stopMotionTimer();
+            flashRadial(page, 'wrong');
+            triggerWrong();
+            resetFeedbackVisuals();
+          });
+        };
+
         // ── Backend path ───────────────────────────────────────────────────
 
         promptHandler = ((e: Event) => {
@@ -311,6 +342,7 @@ export function createTutorialDetail(): HTMLElement {
           if (detail.motion !== motion) return;
 
           hasMatchingPrompt = true; // unlock countdown handling for this page
+          motionWindowStarted = false;
           stopMotionTimer();
 
           scanPromptEl.classList.remove('hidden');
@@ -320,25 +352,30 @@ export function createTutorialDetail(): HTMLElement {
         document.addEventListener('tutorial-prompt', promptHandler);
 
         countdownHandler = ((e: Event) => {
-          // Ignore stray countdowns from other tutorial steps/pages
-          if (!hasMatchingPrompt) return;
+          // If prompt arrived before this page listener, recover on first countdown tick.
+          if (!hasMatchingPrompt) {
+            hasMatchingPrompt = true;
+          }
 
           const detail = (e as CustomEvent).detail as { seconds: number };
           scanPromptEl.classList.remove('hidden');
           scanPromptEl.textContent =
-            detail.seconds > 0 ? `Get ready… ${detail.seconds}` : 'Do the motion now!';
+            detail.seconds > 0 ? 'Get ready...' : motionInstructionText(motion);
 
           if (detail.seconds <= 1) {
-            updateStatus(page, 'Do the motion now!', 'var(--accent-gold)');
+            updateStatus(page, motionInstructionText(motion), 'var(--accent-gold)');
           }
 
-          if (detail.seconds === 0) {
-            startMotionTimer(8, () => {
-              stopMotionTimer();
-              flashRadial(page, 'wrong');
-              triggerWrong();
-              resetFeedbackVisuals();
-            });
+          if (detail.seconds > 0) {
+            countdownFlash.flash(detail.seconds);
+            if (detail.seconds === 1) {
+              setTimeout(() => {
+                if (!page.classList.contains('active')) return;
+                startBackendMotionWindow();
+              }, 1000);
+            }
+          } else {
+            startBackendMotionWindow();
           }
         });
         document.addEventListener('tutorial-countdown', countdownHandler);
@@ -383,7 +420,8 @@ export function createTutorialDetail(): HTMLElement {
 
             if (successCount >= REQUIRED_SUCCESSES) {
               resolved = true;
-              onSuccess(page);
+              flashRadial(page, 'success');
+              setTimeout(() => autoNavigateToNext(page), 500);
             } else {
               setTimeout(() => { cup?.reset(); xyMap?.reset(); zStrip?.reset(); }, 1200);
               flashRadial(page, 'success');
@@ -405,6 +443,7 @@ export function createTutorialDetail(): HTMLElement {
         }
 
       } else {
+        usingKeyboardFallback = true;
         // ── Keyboard fallback ──────────────────────────────────────────────
         // Flow: Space = simulate NFC scan → 3-2-1 countdown flash →
         //       8s motion timer → Space = correct, any key = wrong
@@ -422,8 +461,11 @@ export function createTutorialDetail(): HTMLElement {
           if (keyHandler)    { document.removeEventListener('keydown', keyHandler);             keyHandler = null; }
 
           scanPromptEl.classList.remove('hidden');
-          scanPromptEl.textContent = `Do the ${MOTION_META[motion].label} motion!`;
-          updateStatus(page, 'Do the motion now!', 'var(--accent-gold)');
+          scanPromptEl.textContent = motionInstructionText(motion);
+          updateStatus(page, motionInstructionText(motion), 'var(--accent-gold)');
+          // Show the motion instruction in the main demo area
+          const demoText = page.querySelector('#td-demo-text') as HTMLElement | null;
+          if (demoText) demoText.textContent = motionInstructionText(motion);
 
           // Remove scan keyHandler, register motion keyHandler
           if (keyHandler) { document.removeEventListener('keydown', keyHandler); keyHandler = null; }
@@ -443,7 +485,8 @@ export function createTutorialDetail(): HTMLElement {
               updateCounter(page, successCount, REQUIRED_SUCCESSES);
               if (successCount >= REQUIRED_SUCCESSES) {
                 resolved = true;
-                onSuccess(page);
+                flashRadial(page, 'success');
+                setTimeout(() => autoNavigateToNext(page), 500);
               } else {
                 flashRadial(page, 'success');
                 setTimeout(() => {
@@ -517,6 +560,18 @@ export function createTutorialDetail(): HTMLElement {
         };
         document.addEventListener('keydown', keyHandler);
       }
+      };
+
+      // Register backend listeners immediately so first prompt/countdown cannot be missed.
+      setupBackendOrKeyboard(true);
+
+      // If backend doesn't connect shortly, switch to keyboard fallback.
+      void tutorialBridge.waitForConnection(2500).then((isConnected) => {
+        if (!page.classList.contains('active')) return;
+        if (isConnected || hasMatchingPrompt || usingKeyboardFallback) return;
+        cleanupListeners();
+        setupBackendOrKeyboard(false);
+      });
 
     } else {
       // Leaving page — clean up everything
@@ -659,6 +714,10 @@ function handleRedo(page: HTMLElement): void {
 
 function handleNext(page: HTMLElement): void {
   hidePopup(page);
+  autoNavigateToNext(page);
+}
+
+function autoNavigateToNext(page: HTMLElement): void {
   const currentMotion = (page.dataset.motion ?? 'grinding') as MotionType;
   const idx = TUTORIAL_ORDER.indexOf(currentMotion);
 

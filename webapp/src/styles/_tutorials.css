@@ -474,6 +474,11 @@
   animation: shake 0.4s ease;
 }
 
+/* Hide static motion-arrow overlays; keep only countdown/8s timer cues. */
+#tutorial-detail::after {
+  content: none !important;
+}
+
 /* ── Sensor XY Map ─────────────────────────────────────── */
 .sensor-xy-map {
   position: relative;

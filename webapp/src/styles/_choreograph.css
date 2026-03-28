@@ -335,7 +335,6 @@
 
 .ch-stage-card--active {
   background: rgba(255, 248, 235, 0.62);
-  transform: translateY(-2px);
 }
 
 .ch-stage-card__eyebrow {
@@ -450,27 +449,69 @@
   gap: var(--space-sm);
 }
 
+.ch-captured-panel h3 {
+  margin-bottom: 4px;
+}
+
+.ch-captured-panel p {
+  margin-bottom: 1rem;
+  font-style: italic;
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
 .ch-record-pill {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 0.55rem;
-  padding: 0.5rem 0.9rem;
+  padding: 0.6rem 0.9rem;
   border-radius: var(--radius-md);
   background: rgba(255, 248, 235, 0.5);
   color: #4b3a2d;
   animation: fade-in-up var(--duration-fast) var(--ease-spring) both;
+  margin-bottom: var(--space-xs);
+  width: calc(100% - 1.8rem);
+  border: 1px solid rgba(0,0,0,0.05);
 }
 
 .ch-record-pill__tool {
+  font-size: 0.9rem;
+  font-weight: 600;
   color: #72583e;
 }
 
 .ch-record-pill__arrow {
-  color: #8a7866;
+  opacity: 0.4;
+  font-size: 0.8rem;
 }
 
 .ch-record-pill__motion {
+  font-size: 0.9rem;
+  font-family: var(--font-handwritten);
   color: #5f7a58;
+}
+
+.ch-pill-delete {
+  opacity: 0.3;
+  transition: opacity 0.2s;
+  padding: 4px !important;
+  font-size: 0.7rem !important;
+}
+
+.ch-record-pill:hover .ch-pill-delete {
+  opacity: 1;
+}
+
+.ch-phase-badge {
+  position: absolute;
+  top: -10px;
+  left: 20px;
+  z-index: 10;
+}
+
+.ch-stage-card {
+  position: relative;
+  padding-top: 2rem;
 }
 
 .ch-saved-panel {
@@ -551,4 +592,15 @@
   .ch-saved-actions {
     justify-content: flex-end;
   }
+}
+
+.ch-test-controls {
+  margin-top: var(--space-md);
+  opacity: 0.3;
+  font-size: 0.75rem;
+  transition: opacity 0.3s;
+}
+
+.ch-test-controls:hover {
+  opacity: 1;
 }

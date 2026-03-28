@@ -56,7 +56,6 @@ export interface MotionProfilesData {
 
 /** Game motion types the player can perform */
 export type MotionType =
-  | 'coffee_grinder'
   | 'grinding'
   | 'pour'
   | 'press_down'

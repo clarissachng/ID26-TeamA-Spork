@@ -14,6 +14,8 @@ import { createTutorialDetail } from './pages/TutorialDetail.ts';
 import { createChoreograph } from './pages/Choreograph.ts';
 import { motionDetector } from './components/MotionDetector.ts';
 import { bgm } from './modules/bgm.ts';
+import { playBridge } from './services/playBridge.ts';
+import { tutorialBridge } from './services/tutorialBridge.ts';
 
 
 function init(): void {
@@ -227,7 +229,15 @@ function init(): void {
     console.log(`🎯 Motion: ${motion} (${Math.round(confidence * 100)}%)`);
   }) as EventListener);
 
-  router.onNavigate((_from, to) => console.log(`📄 Page → ${to}`));
+  router.onNavigate((_from, to) => {
+    console.log(`📄 Page → ${to}`);
+    // If we're not on a gameplay or tutorial page, tell the backend to go idle.
+    // This stops any running round/tutorial task in the background.
+    if (to !== 'play' && to !== 'tutorial-detail') {
+      if (playBridge.isConnected()) playBridge.sendUiState('idle');
+      else if (tutorialBridge.isConnected()) tutorialBridge.sendUiState('idle');
+    }
+  });
 
   console.log('☕ While It Steeps — Ready!');
 }

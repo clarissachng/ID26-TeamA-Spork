@@ -132,6 +132,7 @@ def record_session(port: str, baud_rate: int = BAUD_RATE):
         "04728F30C72A81": "Spork",
         "0481AD30C72A81": "Sieve",
         "049CA830C72A81": "Tea Bag",
+        "04899130C72A81": "Whisk",
     }
 
     for tool_uid, tool_name in TOOLS.items():

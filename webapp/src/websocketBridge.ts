@@ -13,10 +13,15 @@ const MOTION_MAP: Record<string, string> = {
   'up_down':  'press_down',
 };
 
-class WebSocketBridge {
-  private ws: WebSocket | null = null;
+export class WebSocketBridge {
+  protected ws: WebSocket | null = null;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private enabled = false;
+  private name = 'WS';
+
+  constructor(name = 'WS') {
+    this.name = name;
+  }
 
   connect(): void {
     this.enabled = true;
@@ -62,7 +67,7 @@ class WebSocketBridge {
     };
   }
 
-  private handleMessage(msg: Record<string, unknown>): void {
+  protected handleMessage(msg: Record<string, unknown>): void {
     // Forward raw sensor data onto the bus (feeds chart + compass visualiser)
     if (msg.sensor === true) {
       bus.emit('sensor-data', {

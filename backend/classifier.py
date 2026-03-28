@@ -31,7 +31,7 @@ from scipy.signal import butter, filtfilt
 SAMPLE_RATE         = 25        # Hz
 LOW_PASS_CUTOFF_HZ  = 3.0
 BASELINE_SAMPLES    = 50        # first 2 s at 25 Hz
-PASS_THRESHOLD      = 0.70      # score >= this = passed
+PASS_THRESHOLD      = 0.60      # score >= this = passed
 
 TEABAG_RHYTHM_LOW_HZ  = 1.5
 TEABAG_RHYTHM_HIGH_HZ = 3.5
@@ -46,6 +46,7 @@ NFC_TAGS: dict[str, str] = {
     "04728F30C72A81": "Spork",
     "0481AD30C72A81": "Sieve",
     "049CA830C72A81": "Tea Bag",
+    "04899130C72A81": "Whisk",
 }
 
 # ── Per-tool thresholds ────────────────────────────────────────────────────
@@ -58,6 +59,14 @@ NFC_TAGS: dict[str, str] = {
 #   peak_reject_uT    hard reject if mag_max below this
 
 TOOL_PROFILES: dict[str, dict] = {
+    "Whisk": {
+        "peak_reject_uT":   2.0,
+        "press_zc_max":     5,
+        "up_down_zc_min":   18,
+        "up_down_freq_min": 0.8,
+        "circular_zc_min":  18,
+        "circular_zc_max":  28,
+    },
     "Coffee Grinder": {
         "peak_reject_uT":   2.0,
         "press_zc_max":     10,
@@ -262,7 +271,7 @@ def score_motion(
         return _null_result(expected_motion, tool_name, "signal_too_weak", feat)
 
     raw_score = _compute_score(feat, expected_motion, profile)
-    passed    = raw_score >= PASS_THRESHOLD
+    passed    = bool(raw_score >= PASS_THRESHOLD)
 
     return {
         "score":  round(raw_score, 3),

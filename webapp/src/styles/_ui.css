@@ -116,7 +116,6 @@
 
 .card:hover {
   background: var(--bg-card-hover);
-  transform: translateX(3.25em);
   box-shadow: var(--shadow-lifted);
 }
 

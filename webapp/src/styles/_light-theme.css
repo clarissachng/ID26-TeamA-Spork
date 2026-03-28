@@ -218,7 +218,7 @@ body,
 }
 
 [data-theme="light"] #tutorial .tutorial-tool-placemat {
-  background: rgba(204, 159, 77, 0.18);
+  background: none;
 }
 
 [data-theme="light"] #tutorial .tutorial-tool-item:hover,
