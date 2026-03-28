@@ -8,6 +8,7 @@
 import { router } from './router.ts';
 import { MOTION_META, type MotionType, type RecordedStep, type SavedChoreography } from '../types/motion.types.ts';
 import { assetUrl } from '../utils/asset.ts';
+import { bridgeChoreo } from '../services/bridgeChoreo.ts';
 
 const STORAGE_KEY = 'spork_choreographies';
 const CHOREO_REPLAY_STORAGE_KEY = 'spork_choreo_replay';
@@ -202,9 +203,11 @@ export function createChoreograph(): HTMLElement {
     const wrap = document.createElement('div');
     wrap.className = 'ch-tool-visual';
 
+    const asset = TOOL_ASSETS[toolLabelText] || assetUrl('/assets/front_spork.png');
+
     const img = document.createElement('img');
     img.className = 'ch-tool-visual__icon';
-    img.src = assetUrl('/assets/front_spork.png');
+    img.src = asset;
     img.alt = 'Scanned tool';
 
     const label = document.createElement('span');
@@ -216,18 +219,30 @@ export function createChoreograph(): HTMLElement {
   }
 
   function setCapturePreview(tool?: string): void {
+    const previewContainer = page.querySelector('#ch-capture-preview') as HTMLElement;
     if (tool) {
       captureToolIcon.classList.remove('hidden');
+      captureToolIcon.src = TOOL_ASSETS[tool] || assetUrl('/assets/front_spork.png');
       captureToolText.textContent = `Scanned: ${formatToolName(tool)}`;
+      previewContainer.classList.add('hidden'); // Hide "No tool scanned" when tool is active
       return;
     }
 
     captureToolIcon.classList.add('hidden');
     captureToolText.textContent = 'No tool scanned yet.';
+    if (recorded.length === 0) {
+      previewContainer.classList.remove('hidden');
+    }
   }
 
   function setStepCounter(): void {
     stepCounter.textContent = `${recorded.length} step${recorded.length === 1 ? '' : 's'} recorded`;
+    const previewContainer = page.querySelector('#ch-capture-preview') as HTMLElement;
+    if (recorded.length > 0) {
+      previewContainer.classList.add('hidden');
+    } else if (recordPhase === 'idle' || recordPhase === 'scan') {
+      previewContainer.classList.remove('hidden');
+    }
   }
 
   function setRecordPhaseUi(nextPhase: RecordPhase, options?: { tool?: string; motion?: MotionType }): void {
@@ -260,6 +275,7 @@ export function createChoreograph(): HTMLElement {
       renderToken(motionVisual, options?.motion ? MOTION_META[options.motion].label : 'Move');
       motionLabel.textContent = 'Motion locked';
       motionCaption.textContent = 'Motion records after scan.';
+      setCapturePreview();
       return;
     }
 
@@ -280,9 +296,16 @@ export function createChoreograph(): HTMLElement {
     }
   }
 
-  function appendRecordedStep(step: RecordedStep): void {
+  function appendRecordedStep(step: RecordedStep, index: number): void {
     const pill = document.createElement('div');
     pill.className = 'ch-record-pill';
+
+    const toolImg = document.createElement('img');
+    toolImg.className = 'ch-record-pill__icon';
+    toolImg.src = TOOL_ASSETS[step.tool ?? ''] || assetUrl('/assets/front_spork.png');
+    toolImg.style.width = '24px';
+    toolImg.style.height = '24px';
+    toolImg.style.objectFit = 'contain';
 
     const toolEl = document.createElement('span');
     toolEl.className = 'ch-record-pill__tool';
@@ -296,8 +319,24 @@ export function createChoreograph(): HTMLElement {
     motionEl.className = 'ch-record-pill__motion';
     motionEl.textContent = MOTION_META[step.motion].label;
 
-    pill.append(toolEl, arrowEl, motionEl);
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'btn btn--ghost btn--small ch-pill-delete';
+    deleteBtn.innerHTML = '✕';
+    deleteBtn.style.marginLeft = 'auto';
+    deleteBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      recorded.splice(index, 1);
+      renderRecordedList();
+      setStepCounter();
+    });
+
+    pill.append(toolImg, toolEl, arrowEl, motionEl, deleteBtn);
     recordedList.appendChild(pill);
+  }
+
+  function renderRecordedList(): void {
+    recordedList.innerHTML = '';
+    recorded.forEach((step, idx) => appendRecordedStep(step, idx));
   }
 
   function cleanupRecordingListeners(): void {
@@ -329,6 +368,11 @@ export function createChoreograph(): HTMLElement {
     liveFeed.textContent = 'Press Record to start.';
     setCapturePreview();
     setRecordPhaseUi('idle');
+
+    // Tell backend we are in choreograph mode
+    void bridgeChoreo.waitForConnection(2000).then(connected => {
+      if (connected) bridgeChoreo.sendUiState('choreograph');
+    });
   });
 
   btnCloseRecord.addEventListener('click', () => {
@@ -342,6 +386,11 @@ export function createChoreograph(): HTMLElement {
     setCapturePreview();
     setRecordPhaseUi('idle');
     showBookView();
+
+    // Reset backend state
+    if (bridgeChoreo.connected) {
+      bridgeChoreo.sendUiState('idle');
+    }
   });
 
   function startRecording(): void {
@@ -380,7 +429,7 @@ export function createChoreograph(): HTMLElement {
       };
 
       recorded.push(step);
-      appendRecordedStep(step);
+      renderRecordedList();
       setStepCounter();
       setRecordPhaseUi('scan', { motion });
       liveFeed.innerHTML = `<span class="ch-live-feed-content"><img class="ch-live-feed-asset" src="${MOTION_META[motion].asset}" alt="${MOTION_META[motion].label}" /> ${formatToolName(pendingTool)} → ${MOTION_META[motion].label} captured</span>`;
@@ -409,6 +458,59 @@ export function createChoreograph(): HTMLElement {
     document.addEventListener('tool-scanned', scanHandler);
     document.addEventListener('motion-detected', motionHandler);
     document.addEventListener('keydown', keyHandler);
+
+    // ── Wire backend or keyboard ─────────────────────────────────────────
+    bridgeChoreo.connect();
+
+    const onBackendResult = (e: Event) => {
+      if (!recording) return;
+      const { motion, tool, score, passed } = (e as CustomEvent).detail as { 
+        motion: MotionType; 
+        tool: string; 
+        score: number; 
+        passed: boolean 
+      };
+      
+      if (passed) {
+        const step: RecordedStep = {
+          motion,
+          timestamp: Date.now() - recordStart,
+          confidence: score,
+          tool: tool,
+        };
+        recorded.push(step);
+        renderRecordedList();
+        setStepCounter();
+        liveFeed.innerHTML = `<span class="ch-live-feed-content"><img class="ch-live-feed-asset" src="${MOTION_META[motion].asset}" alt="${MOTION_META[motion].label}" /> Detected: ${formatToolName(tool)} → ${MOTION_META[motion].label}</span>`;
+      } else {
+        liveFeed.textContent = `Motion too weak. Try scanning again.`;
+      }
+    };
+
+    const onBackendPrompt = (e: Event) => {
+      if (!recording) return;
+      const { instruction } = (e as CustomEvent).detail as { instruction: string };
+      liveFeed.textContent = instruction || "Scan a tool to continue...";
+      setRecordPhaseUi('scan');
+    };
+
+    const onBackendCountdown = (e: Event) => {
+      if (!recording) return;
+      const { seconds } = (e as CustomEvent).detail as { seconds: number };
+      liveFeed.textContent = `Get ready... ${seconds}`;
+      setRecordPhaseUi('motion');
+    };
+
+    const onBackendRecording = (e: Event) => {
+      if (!recording) return;
+      const { seconds_remaining } = (e as CustomEvent).detail as { seconds_remaining: number };
+      liveFeed.textContent = `Recording... ${seconds_remaining}s`;
+    };
+
+    document.addEventListener('choreo-result', onBackendResult);
+    document.addEventListener('choreo-prompt', onBackendPrompt);
+    document.addEventListener('choreo-countdown', onBackendCountdown);
+    document.addEventListener('choreo-recording', onBackendRecording);
   }
 
   function stopRecording(): void {
@@ -427,6 +529,11 @@ export function createChoreograph(): HTMLElement {
 
     if (recorded.length > 0) {
       btnSave.classList.remove('hidden');
+    }
+
+    // Stop bridge communication
+    if (bridgeChoreo.connected) {
+      bridgeChoreo.disconnect();
     }
   }
 

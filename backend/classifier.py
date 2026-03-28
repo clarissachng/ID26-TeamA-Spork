@@ -46,6 +46,7 @@ NFC_TAGS: dict[str, str] = {
     "04728F30C72A81": "Spork",
     "0481AD30C72A81": "Sieve",
     "049CA830C72A81": "Tea Bag",
+    "04899130C72A81": "Whisk",
 }
 
 # ── Per-tool thresholds ────────────────────────────────────────────────────
@@ -58,6 +59,14 @@ NFC_TAGS: dict[str, str] = {
 #   peak_reject_uT    hard reject if mag_max below this
 
 TOOL_PROFILES: dict[str, dict] = {
+    "Whisk": {
+        "peak_reject_uT":   2.0,
+        "press_zc_max":     5,
+        "up_down_zc_min":   18,
+        "up_down_freq_min": 0.8,
+        "circular_zc_min":  18,
+        "circular_zc_max":  28,
+    },
     "Coffee Grinder": {
         "peak_reject_uT":   2.0,
         "press_zc_max":     10,

@@ -42,6 +42,7 @@ const TOOL_ASSETS: Record<string, string> = {
   Spork: assetUrl("/assets/front_spork.png"),
   "Tea Bag": assetUrl("/assets/front_tea.PNG"),
   Tongs: assetUrl("/assets/front_tongs.png"),
+  Whisk: assetUrl("/assets/front_whisk.PNG"),
 };
 
 /** All physical tool names — must match NFC_TAGS values in classifier.py */
@@ -549,12 +550,9 @@ function startLevel(page: HTMLElement): void {
               sensorStarted = true;
               buildSensorGraph(step.motion);
             }
-          } else {
-            // This runs when detail.seconds <= 0
+          } else if (detail.seconds === 0) {
+            // This runs when detail.seconds === 0
             countdownFlash.hide();
-
-            // IMPORTANT: Remove the listener so it doesn't fire again for this step
-            document.removeEventListener("play-countdown", countdownHandler!);
 
             const currentMeta = MOTION_META[runSteps[currentStep].motion];
             scanPromptEl.innerHTML = `Do the <strong>${currentMeta.label}</strong> motion!`;
@@ -566,11 +564,15 @@ function startLevel(page: HTMLElement): void {
         document.addEventListener("play-countdown", countdownHandler);
 
         backendFailHandler = (e: Event) => {
-          const detail = (e as CustomEvent).detail as { motion: MotionType };
+          const detail = (e as CustomEvent).detail as { motion: MotionType; passed?: boolean };
+          // If passed is explicitly false, or if we just got a fail message
           if (detail.motion === step.motion) {
             flashWrongStamp();
             xyMap?.reset();
             zStrip?.reset();
+            
+            // If we failed, we need to be ready for the next countdown
+            sensorStarted = false; 
           }
         };
         document.addEventListener("backend-motion-failed", backendFailHandler);

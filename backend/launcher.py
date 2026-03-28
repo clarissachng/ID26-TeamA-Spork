@@ -22,6 +22,7 @@ import serial.tools.list_ports
 import bridge_common
 import bridge_play
 import bridge_tutorial
+import bridge_choreo
 
 # ── Port detection ─────────────────────────────────────────────────────────
 
@@ -70,13 +71,20 @@ async def ws_handler(websocket):
                 
                 if page == "play":
                     await bridge_tutorial.cancel_session()
+                    await bridge_choreo.cancel_session()
                     await bridge_play.handle_ui_state(msg)
                 elif page == "tutorial":
                     await bridge_play.cancel_session()
+                    await bridge_choreo.cancel_session()
                     await bridge_tutorial.handle_ui_state(msg)
+                elif page == "choreograph":
+                    await bridge_play.cancel_session()
+                    await bridge_tutorial.cancel_session()
+                    await bridge_choreo.handle_ui_state(msg)
                 else:
                     await bridge_play.cancel_session()
                     await bridge_tutorial.cancel_session()
+                    await bridge_choreo.cancel_session()
                     await bridge_common.broadcast({"type": "state", "state": "idle"})
     finally:
         bridge_common.connected_clients.discard(websocket)
