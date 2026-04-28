@@ -117,7 +117,7 @@ export function createTutorialDetail(): HTMLElement {
 
   /* ── Back ── */
   page.querySelector('[data-action="back"]')!
-    .addEventListener('click', () => router.go('tutorial'));
+    .addEventListener('click', () => router.go('main-menu'));
 
   /* ── Popup buttons ── */
   page.querySelector('[data-popup="stay"]')!

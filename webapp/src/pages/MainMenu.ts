@@ -51,8 +51,9 @@ export function createMainMenu(): HTMLElement {
       <!-- ── Centered navigation buttons ── -->
       <nav class="menu-nav" id="menu-nav">
       <button class="menu-nav-btn menu-nav-btn--tutorial" data-action="tutorial">Tutorial</button>
-      <button class="menu-nav-btn menu-nav-btn--choreograph" data-action="choreograph">Choreograph Play</button>  
+      <button class="menu-nav-btn menu-nav-btn--choreograph" data-action="choreograph">Choreograph Play</button>
       <button class="menu-nav-btn menu-nav-btn--play" data-action="play">Random Play</button>
+      <button class="menu-nav-btn menu-nav-btn--multiplayer" data-action="multiplayer">Multiplayer</button>
       </nav>
     </div>
 
@@ -63,19 +64,19 @@ export function createMainMenu(): HTMLElement {
     </button>
   `;
 
-  // ── Wire up illustration hotspots as navigation buttons ──
-  function navigateFromHero(target: 'level-select' | 'tutorial' | 'choreograph'): void {
-    router.go(target);
-  }
-
   page.querySelector('[data-action="play"]')!
-    .addEventListener('click', () => navigateFromHero('level-select'));
+    .addEventListener('click', () => {
+      router.go('play', { levelId: '1' });
+    });
 
   page.querySelector('[data-action="tutorial"]')!
-    .addEventListener('click', () => navigateFromHero('tutorial'));
+    .addEventListener('click', () => router.go('tutorial-detail', { motion: 'grinding' }));
 
   page.querySelector('[data-action="choreograph"]')!
-    .addEventListener('click', () => navigateFromHero('choreograph'));
+    .addEventListener('click', () => router.go('choreograph'));
+
+  page.querySelector('[data-action="multiplayer"]')!
+    .addEventListener('click', () => router.go('multiplayer'));
 
   // ═══════════════════════════════════════════════════════
   //  Arduino Connection Button (bottom-left)

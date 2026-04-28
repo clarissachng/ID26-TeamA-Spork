@@ -164,8 +164,9 @@ export interface SavedChoreography {
 
 export type PageId =
   | 'main-menu'
-  | 'level-select'
   | 'play'
-  | 'tutorial'
   | 'tutorial-detail'
-  | 'choreograph';
+  | 'choreograph'
+  | 'leaderboard'
+  | 'multiplayer'
+  | 'multiplayer-play';

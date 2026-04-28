@@ -113,7 +113,7 @@ export function createPlayPage(): HTMLElement {
       router.go("choreograph");
       return;
     }
-    router.go("level-select");
+    router.go("main-menu");
   });
 
   const observer = new MutationObserver(() => {
@@ -187,6 +187,14 @@ function startLevel(page: HTMLElement): void {
     return steps;
   }
 
+  // Random play progression: 3 → 5 → 7 steps
+  const randomStepCounts: Record<number, number> = {
+    1: 3,
+    2: 5,
+    3: 7,
+  };
+  const randomStepCount = randomStepCounts[levelId] ?? level.steps.length;
+
   const runSteps: PlayStep[] = replay
     ? replay.steps.map((step, index) => ({
         motion: step.motion,
@@ -195,7 +203,7 @@ function startLevel(page: HTMLElement): void {
         description: MOTION_META[step.motion].description,
         tool: step.tool,
       }))
-    : makeRandomSteps(level.steps.length, level.steps[0]?.duration ?? 8);
+    : makeRandomSteps(randomStepCount, level.steps[0]?.duration ?? 8);
 
   const VISUAL_STAMP_COUNT = runSteps.length;
   const stampVisualClasses = Array.from(
