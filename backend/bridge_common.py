@@ -138,6 +138,13 @@ async def arduino_a_reader(port: str) -> None:
 
 # ── Sensor Broadcaster ─────────────────────────────────────────────────────
 
+async def _send_silent(client, msg: str) -> None:
+    """Send msg to one client, silently ignoring closed-connection errors."""
+    try:
+        await client.send(msg)
+    except Exception:
+        pass
+
 async def sensor_broadcaster() -> None:
     """Send latest sensor values to frontend 20 times per second."""
     while True:
@@ -152,10 +159,7 @@ async def sensor_broadcaster() -> None:
                 "state": _state_ref[0],
             })
             for c in connected_clients:
-                try:
-                    asyncio.create_task(c.send(msg))
-                except Exception:
-                    pass
+                asyncio.create_task(_send_silent(c, msg))
         await asyncio.sleep(0.05)
 
 # ── Calibration ────────────────────────────────────────────────────────────

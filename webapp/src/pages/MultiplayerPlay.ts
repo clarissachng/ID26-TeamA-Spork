@@ -16,6 +16,7 @@ import { CountdownFlash } from '../components/CountdownFlash.ts';
 import { SensorXYMap } from '../components/SensorXYMap.ts';
 import { SensorZStrip } from '../components/SensorZStrip.ts';
 import { assetUrl } from '../utils/asset.ts';
+import { multiplayBridge } from '../services/multiplayBridge.ts';
 
 const TOTAL_STEPS    = 3;
 const STEP_DURATION  = 8;
@@ -194,6 +195,18 @@ function startGame(page: HTMLElement): void {
   let p2Correct = 0;
   let currentStep = 0;
 
+  // Connect to backend bridge
+  multiplayBridge.connect();
+  void multiplayBridge.waitForConnection(5000).then((connected) => {
+    if (connected) {
+      console.log('[MultiplayerPlay] Backend connected');
+      multiplayBridge.sendGameStart(p1Name, p2Name);
+      multiplayBridge.sendUiState('multiplayer-play', 'local');
+    } else {
+      console.log('[MultiplayerPlay] Backend not available, running local game');
+    }
+  });
+
   /* ── DOM refs ── */
   const statusBar = page.querySelector('#mp-status-bar') as HTMLElement;
   const timerEl   = page.querySelector('#mp-timer')       as HTMLElement;
@@ -336,12 +349,18 @@ function startGame(page: HTMLElement): void {
   }
 
   /* ── Handler teardown ── */
-  let motionHandler: ((e: Event) => void) | null = null;
-  let keyHandler:    ((e: KeyboardEvent) => void) | null = null;
+  let motionHandler:        ((e: Event) => void) | null = null;
+  let keyHandler:           ((e: KeyboardEvent) => void) | null = null;
+  let backendMotionHandler: ((e: Event) => void) | null = null;
+  let scanHandler:          ((e: Event) => void) | null = null;
+  let nfcScanHandler:       ((e: Event) => void) | null = null;
 
   function cleanupHandlers(): void {
-    if (motionHandler) { document.removeEventListener('motion-detected', motionHandler); motionHandler = null; }
-    if (keyHandler)    { document.removeEventListener('keydown', keyHandler);             keyHandler = null; }
+    if (motionHandler)        { document.removeEventListener('motion-detected',           motionHandler);        motionHandler        = null; }
+    if (keyHandler)           { document.removeEventListener('keydown',                   keyHandler);           keyHandler           = null; }
+    if (backendMotionHandler) { document.removeEventListener('multiplayer-motion-result', backendMotionHandler); backendMotionHandler = null; }
+    if (scanHandler)          { document.removeEventListener('tool-scanned',              scanHandler);          scanHandler          = null; }
+    if (nfcScanHandler)       { document.removeEventListener('nfc-scan',                  nfcScanHandler);       nfcScanHandler       = null; }
     stopTimer();
     destroySensor();
     countdown.hide();
@@ -404,6 +423,12 @@ function startGame(page: HTMLElement): void {
 
     const enterMotionPhase = (): void => {
       if (!alive()) return;
+
+      // Notify backend: this player is now in the motion phase
+      if (multiplayBridge.isConnected()) {
+        multiplayBridge.sendPlayerReady(player, stepIdx, step.motion, step.tool);
+      }
+
       buildSensor(step.motion);
       scanEl.textContent = `Do the ${motionLabel} motion!`;
       statusBar.textContent = `${playerName} — do the ${motionLabel} motion!`;
@@ -439,6 +464,17 @@ function startGame(page: HTMLElement): void {
       };
       document.addEventListener('motion-detected', motionHandler);
 
+      // Backend motion result handler (if backend is connected)
+      backendMotionHandler = (e: Event) => {
+        if (!alive()) return;
+        const detail = (e as CustomEvent).detail as { player: number; step: number; passed: boolean };
+        if (detail.player === player && detail.step === stepIdx) {
+          if (detail.passed) onCorrect();
+          else onFail();
+        }
+      };
+      document.addEventListener('multiplayer-motion-result', backendMotionHandler);
+
       keyHandler = (e: KeyboardEvent) => {
         if (!alive()) return;
         if (e.key === 'Enter' || e.key === ' ') {
@@ -453,15 +489,34 @@ function startGame(page: HTMLElement): void {
       startTimer(STEP_DURATION, () => { if (!resolved) onFail(); });
     };
 
-    // Phase 1: wait for scan (Space/Enter)
+    // Phase 1: wait for scan — triggered by NFC tag, tool-scanned event, or keyboard
+    const advanceScan = (): void => {
+      if (!alive() || scanDone) return;
+      scanDone = true;
+      cleanupHandlers();
+      doCountdown();
+    };
+
+    // Physical NFC scan (fired by motionDetector from the shared WS connection)
+    nfcScanHandler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { tool: string | null; valid: boolean };
+      if (detail.valid && detail.tool) advanceScan();
+    };
+    document.addEventListener('nfc-scan', nfcScanHandler);
+
+    // tool-scanned event (legacy / other sources)
+    scanHandler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { tool?: string };
+      if (detail?.tool) advanceScan();
+    };
+    document.addEventListener('tool-scanned', scanHandler);
+
+    // Keyboard fallback: Space / Enter
     keyHandler = (e: KeyboardEvent) => {
       if (!alive()) return;
       if ((e.key === ' ' || e.key === 'Enter') && !scanDone) {
         e.preventDefault();
-        scanDone = true;
-        document.removeEventListener('keydown', keyHandler!);
-        keyHandler = null;
-        doCountdown();
+        advanceScan();
       }
     };
     document.addEventListener('keydown', keyHandler);
@@ -504,6 +559,11 @@ function startGame(page: HTMLElement): void {
 
     const p1Pct = Math.round((p1Correct / TOTAL_STEPS) * 100);
     const p2Pct = Math.round((p2Correct / TOTAL_STEPS) * 100);
+
+    // Notify backend that game is complete
+    if (multiplayBridge.isConnected()) {
+      multiplayBridge.sendUiState('multiplayer-play-end', 'game_complete');
+    }
 
     saveScore({
       p1: { name: p1Name, correct: p1Correct },

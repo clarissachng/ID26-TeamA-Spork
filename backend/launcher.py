@@ -23,6 +23,7 @@ import bridge_common
 import bridge_play
 import bridge_tutorial
 import bridge_choreo
+import bridge_multiplayer
 
 # ── Port detection ─────────────────────────────────────────────────────────
 
@@ -64,27 +65,45 @@ async def ws_handler(websocket):
             
             if msg.get("ready"):
                 bridge_play.set_ready()
-            
+
+            elif msg.get("type") == "start_game":
+                await bridge_multiplayer.handle_start_game(msg)
+
+            elif msg.get("type") == "player_ready":
+                await bridge_multiplayer.handle_player_ready(msg)
+
             elif msg.get("type") == "ui_state":
                 page = msg.get("page", "")
                 print(f"  [WS] UI State: {page}")
-                
+
                 if page == "play":
                     await bridge_tutorial.cancel_session()
                     await bridge_choreo.cancel_session()
+                    await bridge_multiplayer.cancel_session()
                     await bridge_play.handle_ui_state(msg)
                 elif page == "tutorial":
                     await bridge_play.cancel_session()
                     await bridge_choreo.cancel_session()
+                    await bridge_multiplayer.cancel_session()
                     await bridge_tutorial.handle_ui_state(msg)
                 elif page == "choreograph":
                     await bridge_play.cancel_session()
                     await bridge_tutorial.cancel_session()
+                    await bridge_multiplayer.cancel_session()
                     await bridge_choreo.handle_ui_state(msg)
+                elif page == "multiplayer-play":
+                    await bridge_play.cancel_session()
+                    await bridge_tutorial.cancel_session()
+                    await bridge_choreo.cancel_session()
+                    await bridge_multiplayer.handle_ui_state(msg)
+                elif page in ("multiplayer-play-end", "multiplayer"):
+                    await bridge_multiplayer.cancel_session()
+                    await bridge_common.broadcast({"type": "state", "state": "idle"})
                 else:
                     await bridge_play.cancel_session()
                     await bridge_tutorial.cancel_session()
                     await bridge_choreo.cancel_session()
+                    await bridge_multiplayer.cancel_session()
                     await bridge_common.broadcast({"type": "state", "state": "idle"})
     finally:
         bridge_common.connected_clients.discard(websocket)
