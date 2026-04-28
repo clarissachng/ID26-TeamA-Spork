@@ -294,6 +294,7 @@
   font-size: 0.9rem;
   background: rgba(245, 230, 208, 0.12);
   color: var(--accent-cream);
+  display: none;
 }
 
 .ch-phase-badge[data-phase="scan"] {

@@ -93,6 +93,9 @@ export function createPlayPage(): HTMLElement {
       <span class="btn-icon btn-back-icon"></span>
       Back
     </button>
+    <button class="btn btn--ghost btn--small home-btn" data-action="home">
+      <span class="btn-icon btn-home-icon"></span>
+    </button>
     <div class="play-timer" id="play-timer"></div>
     <div class="play-round">
       <h2 id="play-title"></h2>
@@ -113,7 +116,11 @@ export function createPlayPage(): HTMLElement {
       router.go("choreograph");
       return;
     }
-    router.go("level-select");
+    router.go("main-menu");
+  });
+
+  page.querySelector('[data-action="home"]')!.addEventListener("click", () => {
+    router.home();
   });
 
   const observer = new MutationObserver(() => {
@@ -187,6 +194,14 @@ function startLevel(page: HTMLElement): void {
     return steps;
   }
 
+  // Random play progression: 3 → 5 → 7 steps
+  const randomStepCounts: Record<number, number> = {
+    1: 3,
+    2: 5,
+    3: 7,
+  };
+  const randomStepCount = randomStepCounts[levelId] ?? level.steps.length;
+
   const runSteps: PlayStep[] = replay
     ? replay.steps.map((step, index) => ({
         motion: step.motion,
@@ -195,7 +210,7 @@ function startLevel(page: HTMLElement): void {
         description: MOTION_META[step.motion].description,
         tool: step.tool,
       }))
-    : makeRandomSteps(level.steps.length, level.steps[0]?.duration ?? 8);
+    : makeRandomSteps(randomStepCount, level.steps[0]?.duration ?? 8);
 
   const VISUAL_STAMP_COUNT = runSteps.length;
   const stampVisualClasses = Array.from(

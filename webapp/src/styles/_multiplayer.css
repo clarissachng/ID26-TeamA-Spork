@@ -1,0 +1,457 @@
+/* ── Multiplayer Menu Page ─────────────────────────────────────────────── */
+
+#multiplayer {
+  background-image: url('/assets/main_table.png');
+  background-size: cover;
+  background-position: center;
+}
+
+#multiplayer ::before {
+  background: url(assets/main_table.png);
+    background-size: cover;
+  background-position: center;  
+}
+
+.mp-menu-wrapper {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xl);
+  height: 100%;
+  padding: var(--space-xl);
+}
+
+.mp-menu-header {
+  text-align: center;
+}
+
+.mp-menu-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  width: 100%;
+  max-width: 340px;
+}
+
+/* Pill-style selection buttons for the multiplayer menu */
+.mp-choice-btn {
+  display: block;
+  width: 100%;
+  padding: 1rem 2rem;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  text-align: center;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  transition: background 0.2s ease, transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.mp-choice-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: scale(1.04);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.2);
+}
+
+.mp-choice-btn--primary {
+  background: var(--accent-gold);
+  border-color: var(--accent-gold);
+  color: var(--bg-deep);
+}
+
+.mp-choice-btn--primary:hover {
+  background: var(--accent-gold);
+  border-color: var(--accent-gold);
+  box-shadow: none;
+}
+
+/* ── Name Input Popup ────────────────────────────────────────────────────── */
+
+.mp-popup {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: none;
+  pointer-events: none;
+}
+
+.mp-popup.hidden { display: none; }
+
+.mp-popup::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(12, 10, 8, 0.2);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.mp-popup__card {
+  pointer-events: auto;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lift);
+  padding: var(--space-xl) var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  min-width: 300px;
+  max-width: 400px;
+  width: 90vw;
+}
+
+.mp-popup__title {
+  text-align: center;
+  margin: 0;
+}
+
+.mp-popup__fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.mp-popup__label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.mp-popup__input {
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid rgba(255,255,255,0.15);
+  background: var(--bg-overlay);
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-family: var(--font-body);
+  outline: none;
+  transition: border-color var(--duration-fast);
+}
+
+.mp-popup__input:focus {
+  border-color: var(--accent-gold);
+}
+
+.mp-popup__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+}
+
+/* ── Multiplayer Play Page ───────────────────────────────────────────────── */
+
+#multiplayer-play {
+  background-image: url('/assets/bg.PNG');
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
+}
+
+#multiplayer-play::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(12,10,8,0.14) 0%, rgba(12,10,8,0.28) 100%);
+  pointer-events: none;
+}
+
+/* Central status bar */
+.mp-status-bar {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  color: #fff8eb;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  padding: 0.6rem 1rem;
+  margin-top: clamp(3.5rem, 7vh, 5rem);
+}
+
+/* Split screen container */
+.mp-split-screen {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  width: 100%;
+  height: calc(100% - 6rem);
+  padding: 0 var(--space-md) var(--space-lg);
+  gap: 0;
+}
+
+.mp-divider {
+  width: 2px;
+  background: rgba(255,255,255,0.18);
+  align-self: stretch;
+  flex-shrink: 0;
+}
+
+/* Player panels — position:relative needed for the dim overlay */
+.mp-player-panel {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-md);
+  border-radius: var(--radius-lg);
+  transition: background 0.3s ease;
+}
+
+.mp-player-panel--active {
+  background: rgba(255,255,255,0.04);
+}
+
+/* Dark overlay on the inactive panel — content stays visible but clearly dimmed */
+.mp-player-panel--dim::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.58);
+  border-radius: var(--radius-lg);
+  z-index: 10;
+  pointer-events: none;
+  transition: background 0.3s ease;
+}
+
+.mp-player-name {
+  text-align: center;
+  color: #fff8eb;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+  margin: 0;
+}
+
+/* Stamps — inherit full play-stamps sizing (no overrides) */
+.mp-play-stamps {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+/* Cup area */
+.mp-player-cup {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  min-height: 80px;
+}
+
+/* Cup — same glass appearance as the solo play page */
+#multiplayer-play .cup {
+  width: clamp(180px, 22vw, 240px);
+  height: clamp(250px, 34vh, 330px);
+  border-radius: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+#multiplayer-play .cup::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url('/assets/glass_temp.webp');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  z-index: 2;
+  pointer-events: none;
+}
+
+#multiplayer-play .cup__fill {
+  background: #5c3d2e;
+  border-radius: 0;
+  transition: transform 1.4s cubic-bezier(0.22, 0.61, 0.36, 1), filter 0.3s ease;
+  z-index: 1;
+  clip-path: polygon(15% 0%, 84% 0%, 78% 100%, 22% 100%);
+}
+
+#multiplayer-play .cup__label {
+  bottom: 10px;
+  color: #fff8eb;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  z-index: 3;
+}
+
+/* Sensor — bottom-right, same position as solo play */
+#multiplayer-play .play-sensor-container {
+  position: fixed;
+  bottom: var(--space-lg);
+  right: var(--space-lg);
+  z-index: 2;
+}
+
+#multiplayer-play .sensor-xy-map__canvas,
+#multiplayer-play .sensor-z-strip__canvas {
+  background: rgba(255,255,255,0.82);
+  border: 1px solid rgba(120,100,80,0.22);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+  border-radius: 12px;
+}
+
+/* Scan prompt */
+.mp-player-scan {
+  font-size: 1.25rem;
+  color: #fff8eb;
+  text-align: center;
+  border-radius: var(--radius-md);
+  padding: 6px 10px;
+  min-height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mp-player-scan.hidden { display: none; }
+
+/* ── End-of-round result overlay ─────────────────────────────────────────── */
+
+.mp-result {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  background: rgba(12, 10, 8, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(6px);
+}
+
+.mp-result.hidden { display: none; }
+
+.mp-result__card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lift);
+  padding: var(--space-xl) var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-lg);
+  min-width: 280px;
+  max-width: 420px;
+  width: 90vw;
+  text-align: center;
+}
+
+.mp-result__title {
+  margin: 0;
+  font-size: 1.6rem;
+}
+
+.mp-result__scores {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  width: 100%;
+  justify-content: center;
+}
+
+.mp-result__score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.mp-result__player {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.mp-result__pct {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  color: var(--text-primary);
+}
+
+.mp-result__vs {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.mp-result__actions {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+/* ── Leaderboard Page ────────────────────────────────────────────────────── */
+
+#leaderboard {
+  background-image: url('assets/bg_leaderboard.png');
+  background-size: cover;
+  background-position: center;
+}
+
+.lb-wrapper {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-lg);
+  width: 100%;
+  max-width: 700px;
+  padding-top: clamp(15rem, 10vh, 7rem);
+  text-align: center;
+  margin: 0 auto;
+}
+
+.lb-wrapper h2 {
+  color: #3a322c;
+}
+
+.lb-table {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.lb-row {
+  display: grid;
+  grid-template-columns: 90px 1fr 60px 40px 1fr 60px;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background: rgba(255,255,255,0.05);
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.lb-row--header {
+  background: rgba(255,255,255,0.1);
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.lb-cell { text-align: left; color: #3a322c;}
+.lb-cell--date  { color: var(--text-muted); font-size: 0.78rem; }
+.lb-cell--score { text-align: right; font-family: var(--font-display); }
+.lb-cell--vs    { text-align: center; color: var(--text-muted); opacity: 0.5; }
+.lb-cell--winner { color: var(--accent-gold); font-weight: 600; }

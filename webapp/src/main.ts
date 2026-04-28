@@ -7,11 +7,12 @@ import './styles/main.css';
 
 import { router } from './pages/router.ts';
 import { createMainMenu } from './pages/MainMenu.ts';
-import { createLevelSelect } from './pages/LevelSelect.ts';
 import { createPlayPage } from './pages/Play.ts';
-import { createTutorial } from './pages/Tutorial.ts';
 import { createTutorialDetail } from './pages/TutorialDetail.ts';
 import { createChoreograph } from './pages/Choreograph.ts';
+import { createLeaderboard } from './pages/Leaderboard.ts';
+import { createMultiplayer } from './pages/Multiplayer.ts';
+import { createMultiplayerPlay } from './pages/MultiplayerPlay.ts';
 import { motionDetector } from './components/MotionDetector.ts';
 import { bgm } from './modules/bgm.ts';
 import { playBridge } from './services/playBridge.ts';
@@ -30,11 +31,12 @@ function init(): void {
 
   // 1. Mount all pages into #app
   app.appendChild(createMainMenu());
-  app.appendChild(createLevelSelect());
   app.appendChild(createPlayPage());
-  app.appendChild(createTutorial());
   app.appendChild(createTutorialDetail());
   app.appendChild(createChoreograph());
+  app.appendChild(createLeaderboard());
+  app.appendChild(createMultiplayer());
+  app.appendChild(createMultiplayerPlay());
 
   // 2. Global controls bar (visible on all pages)
   const globalControls = document.createElement('div');
