@@ -88,11 +88,9 @@
   pointer-events: none;
 }
 
-.mp-popup:not(.hidden) {
-  pointer-events: auto;
-}
+.mp-popup.hidden { display: none; }
 
-.mp-popup:not(.hidden)::before {
+.mp-popup::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -101,9 +99,8 @@
   z-index: -1;
 }
 
-.mp-popup.hidden { display: none; }
-
 .mp-popup__card {
+  pointer-events: auto;
   background: var(--bg-card);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lift);

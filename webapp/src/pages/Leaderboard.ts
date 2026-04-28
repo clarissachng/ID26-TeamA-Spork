@@ -14,6 +14,9 @@ export function createLeaderboard(): HTMLElement {
       <span class="btn-icon btn-back-icon"></span>
       Back
     </button>
+    <button class="btn btn--ghost btn--small home-btn" data-action="home">
+      <span class="btn-icon btn-home-icon"></span>
+    </button>
     <div class="lb-wrapper">
       <h2>Leaderboard</h2>
       <p class="subtitle">Recent multiplayer rounds</p>
@@ -23,6 +26,9 @@ export function createLeaderboard(): HTMLElement {
 
   page.querySelector('[data-action="back"]')!
     .addEventListener('click', () => router.go('multiplayer'));
+
+  page.querySelector('[data-action="home"]')!
+    .addEventListener('click', () => router.home());
 
   /* Re-render scores each time the page becomes active */
   const observer = new MutationObserver(() => {

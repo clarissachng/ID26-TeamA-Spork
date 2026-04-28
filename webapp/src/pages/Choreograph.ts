@@ -42,6 +42,9 @@ export function createChoreograph(): HTMLElement {
       <span class="btn-icon btn-back-icon"></span>
       Back
     </button>
+    <button class="btn btn--ghost btn--small home-btn" data-action="home">
+      <span class="btn-icon btn-home-icon"></span>
+    </button>
 
     <div class="stack stack--lg page-scroll choreograph-shell">
       <div id="ch-book-view" class="stack ch-book">
@@ -643,6 +646,12 @@ export function createChoreograph(): HTMLElement {
   }
 
   page.querySelector('[data-action="back"]')!
+    .addEventListener('click', () => {
+      if (recording) stopRecording();
+      router.home();
+    });
+
+  page.querySelector('[data-action="home"]')!
     .addEventListener('click', () => {
       if (recording) stopRecording();
       router.home();

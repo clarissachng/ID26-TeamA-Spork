@@ -14,6 +14,9 @@ export function createMultiplayer(): HTMLElement {
       <span class="btn-icon btn-back-icon"></span>
       Back
     </button>
+    <button class="btn btn--ghost btn--small home-btn" data-action="home">
+      <span class="btn-icon btn-home-icon"></span>
+    </button>
 
     <div class="mp-menu-wrapper">
       <div class="mp-menu-header">
@@ -66,6 +69,9 @@ export function createMultiplayer(): HTMLElement {
 
   page.querySelector('[data-action="back"]')!
     .addEventListener('click', () => router.go('main-menu'));
+
+  page.querySelector('[data-action="home"]')!
+    .addEventListener('click', () => router.home());
 
   page.querySelector('[data-action="view-leaderboard"]')!
     .addEventListener('click', () => router.go('leaderboard'));

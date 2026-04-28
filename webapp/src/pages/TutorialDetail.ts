@@ -34,6 +34,9 @@ export function createTutorialDetail(): HTMLElement {
       <span class="btn-icon btn-back-icon"></span>
       Back
     </button>
+    <button class="btn btn--ghost btn--small home-btn" data-action="home">
+      <span class="btn-icon btn-home-icon"></span>
+    </button>
     <div class="stack stack--lg" style="text-align: center; width: 100%; max-width: 480px;">
       <div id="td-emoji" style="font-size: 5rem;"></div>
       <h2 id="td-prop"></h2>
@@ -118,6 +121,9 @@ export function createTutorialDetail(): HTMLElement {
   /* ── Back ── */
   page.querySelector('[data-action="back"]')!
     .addEventListener('click', () => router.go('main-menu'));
+
+  page.querySelector('[data-action="home"]')!
+    .addEventListener('click', () => router.home());
 
   /* ── Popup buttons ── */
   page.querySelector('[data-popup="stay"]')!

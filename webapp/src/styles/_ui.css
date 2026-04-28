@@ -339,6 +339,37 @@
   line-height: 1;
 }
 
+/* ── Home Button (persistent) ──────────────────────────── */
+.home-btn {
+  position: absolute;
+  top: var(--space-lg);
+  left: 8rem;
+  z-index: 10;
+  background: var(--bg-surface);
+}
+
+.home-btn:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-secondary);
+  transform: translateY(-1px);
+}
+
+.home-btn:active {
+  transform: translateY(1px) scale(0.97);
+}
+
+.home-btn .btn-home-icon {
+  width: auto;
+  height: auto;
+  background: none;
+}
+
+.home-btn .btn-home-icon::before {
+  content: '\2302';
+  font-size: 1rem;
+  line-height: 1;
+}
+
 /* ── Connection Status ─────────────────────────────────── */
 .connection-dot {
   width: 10px;

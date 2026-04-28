@@ -116,6 +116,9 @@ export function createMultiplayerPlay(): HTMLElement {
       <span class="btn-icon btn-back-icon"></span>
       Back
     </button>
+    <button class="btn btn--ghost btn--small home-btn" data-action="home">
+      <span class="btn-icon btn-home-icon"></span>
+    </button>
 
     <div class="mp-status-bar" id="mp-status-bar">Get ready…</div>
 
@@ -134,7 +137,7 @@ export function createMultiplayerPlay(): HTMLElement {
         <h2 class="mp-player-name" id="mp-name-2">Player 2</h2>
         <div id="play-progress" class="play-progress-dots"></div>
         <div id="mp-stamps-2"></div>
-        <div id="play-scan-prompt" class="play-scan-prompt hidden"></div>
+        <div class="mp-player-scan hidden" id="mp-scan-2"></div>
 
         <div class="mp-player-cup" id="mp-cup-2"></div>
         
@@ -152,6 +155,13 @@ export function createMultiplayerPlay(): HTMLElement {
       activeCleanup?.();
       activeCleanup = null;
       router.go('multiplayer');
+    });
+
+  page.querySelector('[data-action="home"]')!
+    .addEventListener('click', () => {
+      activeCleanup?.();
+      activeCleanup = null;
+      router.home();
     });
 
   const observer = new MutationObserver(() => {
