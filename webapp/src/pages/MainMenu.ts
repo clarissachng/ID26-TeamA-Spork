@@ -35,7 +35,7 @@ export function createMainMenu(): HTMLElement {
             height="120"
           />
           <div class="menu-logo-text">
-            <h1>Stir Things Up</h1>
+            <h1>Stir It Up</h1>
             <p class="subtitle">a habit disrupting game</p>
           </div>
         </div>

@@ -382,11 +382,6 @@ export function createChoreograph(): HTMLElement {
     liveFeed.textContent = 'Press Record to start.';
     setCapturePreview();
     setRecordPhaseUi('idle');
-
-    // Tell backend we are in choreograph mode
-    void bridgeChoreo.waitForConnection(2000).then(connected => {
-      if (connected) bridgeChoreo.sendUiState('choreograph');
-    });
   });
 
   btnCloseRecord.addEventListener('click', () => {
@@ -400,11 +395,6 @@ export function createChoreograph(): HTMLElement {
     setCapturePreview();
     setRecordPhaseUi('idle');
     showBookView();
-
-    // Reset backend state
-    if (bridgeChoreo.connected) {
-      bridgeChoreo.sendUiState('idle');
-    }
   });
 
   function startRecording(): void {
@@ -473,8 +463,12 @@ export function createChoreograph(): HTMLElement {
     document.addEventListener('motion-detected', motionHandler);
     document.addEventListener('keydown', keyHandler);
 
-    // ── Wire backend or keyboard ─────────────────────────────────────────
+    // ── Wire backend ─────────────────────────────────────────────────────
     bridgeChoreo.connect();
+    // Send ui_state after the connection is established (connect() is async)
+    void bridgeChoreo.waitForConnection(3000).then(connected => {
+      if (connected && recording) bridgeChoreo.sendUiState('choreograph');
+    });
 
     const onBackendResult = (e: Event) => {
       if (!recording) return;
